@@ -1,4 +1,5 @@
-from fastapi import FastAPI, APIRouter
+from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
 from motor.motor_asyncio import AsyncIOMotorClient
@@ -6,67 +7,189 @@ import os
 import logging
 from pathlib import Path
 from pydantic import BaseModel, Field, ConfigDict
-from typing import List
+from typing import List, Optional
 import uuid
 from datetime import datetime, timezone
-
+import email
+from email import policy
+import quopri
+import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')
 
-# MongoDB connection
 mongo_url = os.environ['MONGO_URL']
 client = AsyncIOMotorClient(mongo_url)
 db = client[os.environ['DB_NAME']]
 
-# Create the main app without a prefix
 app = FastAPI()
-
-# Create a router with the /api prefix
 api_router = APIRouter(prefix="/api")
 
-
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
+# Models
+class FileDoc(BaseModel):
+    model_config = ConfigDict(extra="ignore")
     id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+    name: str
+    file_type: str  # "html" or "mhtml"
+    size: int = 0
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+class FileListResponse(BaseModel):
+    files: List[FileDoc]
 
-# Add your routes to the router instead of directly to app
+class PasteInput(BaseModel):
+    name: str = "Untitled"
+    content: str
+
+class BookmarkDoc(BaseModel):
+    model_config = ConfigDict(extra="ignore")
+    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
+    file_id: str
+    name: str
+    note: str = ""
+    created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
+
+class BookmarkCreate(BaseModel):
+    file_id: str
+    name: str
+    note: str = ""
+
+class BookmarkListResponse(BaseModel):
+    bookmarks: List[BookmarkDoc]
+
+
+def parse_mhtml(raw_bytes: bytes) -> str:
+    """Parse MHTML file and extract main HTML content."""
+    try:
+        msg = email.message_from_bytes(raw_bytes, policy=policy.default)
+        if msg.is_multipart():
+            for part in msg.walk():
+                ct = part.get_content_type()
+                if ct == "text/html":
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        return payload.decode(charset, errors='replace')
+            # Fallback: return first text part
+            for part in msg.walk():
+                ct = part.get_content_type()
+                if ct.startswith("text/"):
+                    payload = part.get_payload(decode=True)
+                    if payload:
+                        charset = part.get_content_charset() or 'utf-8'
+                        return payload.decode(charset, errors='replace')
+        else:
+            payload = msg.get_payload(decode=True)
+            if payload:
+                charset = msg.get_content_charset() or 'utf-8'
+                return payload.decode(charset, errors='replace')
+    except Exception as e:
+        logger.error(f"MHTML parse error: {e}")
+    return "<html><body><p>Failed to parse MHTML content</p></body></html>"
+
+
 @api_router.get("/")
 async def root():
-    return {"message": "Hello World"}
+    return {"message": "HTML Viewer API"}
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
+@api_router.post("/files/upload", response_model=List[FileDoc])
+async def upload_files(files: List[UploadFile] = File(...)):
+    results = []
+    for f in files:
+        raw = await f.read()
+        name = f.filename or "unknown"
+        ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
+        
+        if ext in ("mhtml", "mht"):
+            content = parse_mhtml(raw)
+            file_type = "mhtml"
+        elif ext in ("html", "htm"):
+            content = raw.decode("utf-8", errors="replace")
+            file_type = "html"
+        else:
+            # Try to treat as HTML anyway
+            content = raw.decode("utf-8", errors="replace")
+            file_type = "html"
+        
+        file_doc = FileDoc(name=name, file_type=file_type, size=len(raw))
+        doc = file_doc.model_dump()
+        doc["content"] = content
+        await db.files.insert_one(doc)
+        results.append(file_doc)
     
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    return results
 
-# Include the router in the main app
+
+@api_router.post("/files/paste", response_model=FileDoc)
+async def paste_html(data: PasteInput):
+    name = data.name if data.name else "Untitled.html"
+    if not name.endswith(".html"):
+        name += ".html"
+    
+    file_doc = FileDoc(name=name, file_type="html", size=len(data.content.encode("utf-8")))
+    doc = file_doc.model_dump()
+    doc["content"] = data.content
+    await db.files.insert_one(doc)
+    return file_doc
+
+
+@api_router.get("/files", response_model=FileListResponse)
+async def list_files():
+    files = await db.files.find({}, {"_id": 0, "content": 0}).sort("created_at", -1).to_list(500)
+    return FileListResponse(files=files)
+
+
+@api_router.get("/files/{file_id}/content")
+async def get_file_content(file_id: str):
+    doc = await db.files.find_one({"id": file_id}, {"_id": 0})
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    return {"id": doc["id"], "name": doc["name"], "content": doc.get("content", "")}
+
+
+@api_router.delete("/files/{file_id}")
+async def delete_file(file_id: str):
+    result = await db.files.delete_one({"id": file_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    # Also remove bookmarks for this file
+    await db.bookmarks.delete_many({"file_id": file_id})
+    return {"status": "deleted"}
+
+
+@api_router.post("/bookmarks", response_model=BookmarkDoc)
+async def create_bookmark(data: BookmarkCreate):
+    # Verify file exists
+    file_doc = await db.files.find_one({"id": data.file_id}, {"_id": 0, "content": 0})
+    if not file_doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    
+    # Check if already bookmarked
+    existing = await db.bookmarks.find_one({"file_id": data.file_id}, {"_id": 0})
+    if existing:
+        return BookmarkDoc(**existing)
+    
+    bookmark = BookmarkDoc(file_id=data.file_id, name=data.name, note=data.note)
+    doc = bookmark.model_dump()
+    await db.bookmarks.insert_one(doc)
+    return bookmark
+
+
+@api_router.get("/bookmarks", response_model=BookmarkListResponse)
+async def list_bookmarks():
+    bookmarks = await db.bookmarks.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return BookmarkListResponse(bookmarks=bookmarks)
+
+
+@api_router.delete("/bookmarks/{bookmark_id}")
+async def delete_bookmark(bookmark_id: str):
+    result = await db.bookmarks.delete_one({"id": bookmark_id})
+    if result.deleted_count == 0:
+        raise HTTPException(status_code=404, detail="Bookmark not found")
+    return {"status": "deleted"}
+
+
 app.include_router(api_router)
 
 app.add_middleware(
@@ -77,7 +200,6 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Configure logging
 logging.basicConfig(
     level=logging.INFO,
     format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'

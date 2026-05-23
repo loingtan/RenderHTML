@@ -1,34 +1,339 @@
-.App-logo {
-    height: 40vmin;
-    pointer-events: none;
+/* HTML Viewer App Styles */
+
+.app-layout {
+  height: 100vh;
+  display: flex;
+  flex-direction: row;
+  overflow: hidden;
+  background: #F9F9F9;
 }
 
-@media (prefers-reduced-motion: no-preference) {
-    .App-logo {
-        animation: App-logo-spin infinite 20s linear;
-    }
+.sidebar {
+  width: 320px;
+  min-width: 320px;
+  height: 100vh;
+  border-right: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  display: flex;
+  flex-direction: column;
+  flex-shrink: 0;
 }
 
-.App-header {
-    background-color: #0f0f10;
-    min-height: 100vh;
-    display: flex;
+.sidebar-header {
+  padding: 16px 20px;
+  border-bottom: 1px solid #E2E8F0;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.sidebar-header h1 {
+  font-size: 18px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+  color: #111111;
+  margin: 0;
+}
+
+.sidebar-content {
+  flex: 1;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.main-workspace {
+  flex: 1;
+  height: 100vh;
+  display: flex;
+  flex-direction: column;
+  background: #F9F9F9;
+  overflow: hidden;
+}
+
+.toolbar {
+  height: 48px;
+  min-height: 48px;
+  padding: 0 16px;
+  border-bottom: 1px solid #E2E8F0;
+  background: rgba(255,255,255,0.8);
+  backdrop-filter: blur(12px);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.toolbar-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-width: 0;
+  flex: 1;
+}
+
+.toolbar-filename {
+  font-size: 13px;
+  font-weight: 600;
+  color: #111111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  font-family: 'JetBrains Mono', monospace;
+}
+
+.toolbar-right {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 0;
+}
+
+.render-frame {
+  flex: 1;
+  background: #FFFFFF;
+  border: none;
+  overflow: auto;
+  position: relative;
+}
+
+.render-frame iframe {
+  width: 100%;
+  height: 100%;
+  border: none;
+  display: block;
+}
+
+.render-frame.mobile-viewport {
+  display: flex;
+  justify-content: center;
+  padding: 24px;
+  background: #F3F4F6;
+}
+
+.render-frame.mobile-viewport iframe {
+  width: 375px;
+  height: 100%;
+  border: 1px solid #E2E8F0;
+  background: white;
+  box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+}
+
+.dropzone {
+  border: 2px dashed #CBD5E1;
+  background: #FAFAFA;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 32px 20px;
+  cursor: pointer;
+  transition: border-color 0.2s, background-color 0.2s;
+  margin: 12px;
+}
+
+.dropzone:hover,
+.dropzone.dragging {
+  border-color: #0000FF;
+  background: #F0F0FF;
+}
+
+.dropzone-icon {
+  color: #888888;
+  margin-bottom: 12px;
+}
+
+.dropzone-text {
+  font-size: 13px;
+  font-weight: 500;
+  color: #555555;
+  text-align: center;
+}
+
+.dropzone-subtext {
+  font-size: 11px;
+  color: #888888;
+  margin-top: 4px;
+}
+
+.file-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 8px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.file-item:hover {
+  background: #F9FAFB;
+}
+
+.file-item.active {
+  background: #EEF2FF;
+  border-left: 3px solid #0000FF;
+  padding-left: 13px;
+}
+
+.file-item-icon {
+  color: #888888;
+  flex-shrink: 0;
+}
+
+.file-item-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.file-item-name {
+  font-size: 13px;
+  font-weight: 500;
+  color: #111111;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.file-item-meta {
+  font-size: 11px;
+  color: #888888;
+  margin-top: 1px;
+}
+
+.file-item-actions {
+  opacity: 0;
+  transition: opacity 0.15s;
+  flex-shrink: 0;
+}
+
+.file-item:hover .file-item-actions {
+  opacity: 1;
+}
+
+.empty-state {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 48px;
+  position: relative;
+}
+
+.empty-state-bg {
+  position: absolute;
+  inset: 0;
+  opacity: 0.04;
+  background-size: cover;
+  background-position: center;
+  pointer-events: none;
+}
+
+.empty-state-content {
+  position: relative;
+  z-index: 1;
+  text-align: center;
+}
+
+.empty-state-icon {
+  color: #CBD5E1;
+  margin-bottom: 20px;
+}
+
+.empty-state-title {
+  font-size: 20px;
+  font-weight: 700;
+  color: #111111;
+  letter-spacing: -0.02em;
+  margin-bottom: 8px;
+}
+
+.empty-state-desc {
+  font-size: 14px;
+  color: #888888;
+  max-width: 320px;
+  line-height: 1.5;
+}
+
+.paste-area {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  padding: 12px;
+  gap: 8px;
+}
+
+.paste-area textarea {
+  flex: 1;
+  resize: none;
+  border: 1px solid #E2E8F0;
+  background: #FFFFFF;
+  padding: 12px;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px;
+  line-height: 1.6;
+  color: #111111;
+  outline: none;
+  transition: border-color 0.2s;
+}
+
+.paste-area textarea:focus {
+  border-color: #0000FF;
+  box-shadow: 0 0 0 2px rgba(0,0,255,0.1);
+}
+
+.paste-area textarea::placeholder {
+  color: #AAAAAA;
+}
+
+.bookmark-item {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  cursor: pointer;
+  transition: background-color 0.15s;
+  border-bottom: 1px solid #F3F4F6;
+}
+
+.bookmark-item:hover {
+  background: #F9FAFB;
+}
+
+.bookmark-note {
+  font-size: 11px;
+  color: #888888;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* Tab overrides for brutalist style */
+.sidebar [data-state="active"] {
+  font-weight: 600;
+}
+
+.no-items-message {
+  padding: 24px 16px;
+  text-align: center;
+  color: #888888;
+  font-size: 13px;
+}
+
+@media (max-width: 768px) {
+  .app-layout {
     flex-direction: column;
-    align-items: center;
-    justify-content: center;
-    font-size: calc(10px + 2vmin);
-    color: white;
-}
-
-.App-link {
-    color: #61dafb;
-}
-
-@keyframes App-logo-spin {
-    from {
-        transform: rotate(0deg);
-    }
-    to {
-        transform: rotate(360deg);
-    }
+  }
+  .sidebar {
+    width: 100%;
+    min-width: 100%;
+    height: 40vh;
+    border-right: none;
+    border-bottom: 1px solid #E2E8F0;
+  }
+  .main-workspace {
+    height: 60vh;
+  }
 }
