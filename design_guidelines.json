@@ -1,0 +1,106 @@
+{
+  "theme": "light",
+  "archetype": "4",
+  "archetype_name": "Swiss & High-Contrast",
+  "emotion_and_vibe": "Objective, rigid, and function-first. The tool acts as a transparent container where the HTML payload is the star. Strict layout, zero decorative fluff.",
+  "typography": {
+    "strategy": "Swiss Brutalist (Tech/Utility)",
+    "primary_font": "Cabinet Grotesk",
+    "primary_font_weight": "font-black for large, font-medium for standard headers",
+    "body_font": "IBM Plex Sans",
+    "code_font": "JetBrains Mono",
+    "heading_hierarchy": {
+      "h1": "text-4xl sm:text-5xl tracking-tight leading-none text-slate-900",
+      "h2": "text-2xl sm:text-3xl tracking-tight leading-snug text-slate-800",
+      "h3": "text-xl sm:text-2xl tracking-tight text-slate-800",
+      "h4": "text-lg uppercase tracking-[0.2em] font-semibold text-slate-500"
+    },
+    "body_text": "text-base leading-relaxed text-slate-600",
+    "small_text": "text-sm text-slate-500 font-medium"
+  },
+  "colors": {
+    "background": {
+      "main": "bg-[#F9F9F9]",
+      "surface": "bg-[#FFFFFF]",
+      "surface_alt": "bg-[#F3F4F6]"
+    },
+    "text": {
+      "primary": "text-[#111111]",
+      "secondary": "text-[#555555]",
+      "muted": "text-[#888888]",
+      "on_accent": "text-[#FFFFFF]"
+    },
+    "border": {
+      "default": "border-slate-200",
+      "focus": "border-blue-600",
+      "hover": "border-slate-300"
+    },
+    "accent": {
+      "primary": "bg-[#0000FF]",
+      "primary_hover": "bg-[#0000CC]",
+      "secondary": "bg-slate-900",
+      "secondary_hover": "bg-slate-800",
+      "danger": "bg-[#FF3333]"
+    }
+  },
+  "spacing_and_layout": {
+    "grid_system": "MODE B: THE CONTROL ROOM GRID",
+    "container": "w-full max-w-screen-2xl mx-auto p-4 md:p-8",
+    "layout_structure": {
+      "app": "h-screen flex flex-col md:flex-row overflow-hidden",
+      "sidebar": "w-full md:w-80 h-full border-r border-slate-200 bg-white flex flex-col flex-shrink-0",
+      "main_workspace": "flex-1 h-full bg-[#F9F9F9] flex flex-col"
+    },
+    "spacing_scale": {
+      "compact": "p-2 gap-2",
+      "standard": "p-4 gap-4",
+      "generous": "p-8 gap-8"
+    }
+  },
+  "surfaces_and_micro_themes": {
+    "cards": "bg-white border border-slate-200 rounded-none shadow-sm",
+    "header": "bg-white/80 backdrop-blur-xl border-b border-slate-200 sticky top-0 z-50",
+    "inputs": "bg-white border border-slate-300 rounded-none focus:ring-2 focus:ring-[#0000FF] focus:border-[#0000FF] transition-all",
+    "buttons": "rounded-none font-medium px-4 py-2 transition-colors flex items-center justify-center gap-2",
+    "render_frame": "bg-white border border-slate-200 w-full h-full shadow-inner overflow-auto relative",
+    "dropzone": "border-2 border-dashed border-slate-300 bg-slate-50 hover:bg-slate-100 hover:border-[#0000FF] transition-all flex flex-col items-center justify-center min-h-[200px]"
+  },
+  "animations": {
+    "hover": "transition-colors duration-200 ease-in-out",
+    "focus": "transition-shadow duration-200 ease-in-out",
+    "list_entrance": "framer-motion staggered fade-in up",
+    "feedback": "micro-scale on click (active:scale-[0.98])"
+  },
+  "icons_and_assets": {
+    "icon_library": "@phosphor-icons/react",
+    "icon_style": "Duotone or Regular weight, strictly functional",
+    "images": {
+      "hero_background": {
+        "url": "https://static.prod-images.emergentagent.com/jobs/93a3545f-af24-4c6f-bfff-34224c1feb16/images/de0b74c62464117ee3a5e7dce0a2fffed4e6a0b7b777660a3c80635bec0cc7e2.png",
+        "alt": "Abstract geometric Swiss poster art in Klein Blue and Black",
+        "usage_context": "Use as a very subtle faded background on empty states or the initial landing dropzone view (opacity 5-10%)."
+      }
+    }
+  },
+  "components_strategy": {
+    "sidebar": "Contains Tabs (Shadcn) for 'Files', 'Bookmarks', 'Raw Paste'. Use strict List components with hover states for files.",
+    "dropzone": "Drag-and-drop area for HTML/MHTML files or whole folders.",
+    "renderer": "An iframe or sanitized div taking 100% width/height of the workspace container. Must have a toolbar on top to 'Save Bookmark', 'Toggle Viewport Size (Desktop/Mobile)', and 'Refresh'.",
+    "shadcn_overrides": "Remove all rounded corners (rounded-none). Replace default neutral focus rings with sharp blue focus rings."
+  },
+  "accessibility_and_testing": {
+    "contrast": "Strict APCA/WCAG AA compliance. Dark text on light backgrounds.",
+    "focus_states": "Visible focus outlines required on all interactive elements.",
+    "test_ids": "Mandatory data-testid attributes on all buttons, tabs, input fields, file list items, and the render frame.",
+    "aria": "Proper aria-labels for icon-only buttons (like viewport toggles or delete bookmark buttons)."
+  },
+  "instructions_to_main_agent": [
+    "Install and configure @phosphor-icons/react for functional UI icons.",
+    "Implement the layout as a full-height (100vh) application, avoiding overall page scroll in favor of internal pane scrolling.",
+    "Implement file upload handling (single file + directory mapping) keeping state in React Context or a lightweight store.",
+    "The renderer should use an iframe with srcDoc for raw HTML string rendering to sandbox the output safely.",
+    "Provide a split-pane or purely tabbed approach in the sidebar to switch between 'Upload', 'Raw Code Paste', and 'Saved Bookmarks'.",
+    "Ensure the design remains strictly brutalist: 1px hard borders, no border-radius (rounded-none), and high contrast.",
+    "Use the provided 'hero_background' image with high transparency (opacity-5) in the background of the empty dropzone state."
+  ]
+}
