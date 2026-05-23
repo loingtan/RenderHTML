@@ -166,7 +166,7 @@ export function Renderer() {
           ref={iframeRef}
           srcDoc={activeContent}
           title="HTML Render"
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms"
+          sandbox="allow-scripts allow-popups allow-forms"
           data-testid="render-iframe"
         />
       </div>
