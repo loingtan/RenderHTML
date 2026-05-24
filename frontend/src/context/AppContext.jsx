@@ -117,6 +117,19 @@ export function AppProvider({ children }) {
     }
   }, [fetchBookmarks]);
 
+  const clearAllFiles = useCallback(async () => {
+    try {
+      const res = await axios.delete(`${API}/files`);
+      toast.success(`Cleared ${res.data.files_deleted} file(s)`);
+      setActiveFile(null);
+      setActiveContent("");
+      await fetchFiles();
+      await fetchBookmarks();
+    } catch (e) {
+      toast.error("Clear failed");
+    }
+  }, [fetchFiles, fetchBookmarks]);
+
   const value = {
     files,
     bookmarks,
@@ -133,6 +146,7 @@ export function AppProvider({ children }) {
     deleteFile,
     addBookmark,
     removeBookmark,
+    clearAllFiles,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

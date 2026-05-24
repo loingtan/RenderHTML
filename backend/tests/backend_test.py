@@ -277,6 +277,55 @@ class TestBookmarks:
         assert bid not in ids
 
 
+# ----- Bulk Delete (NEW) -----
+class TestBulkDelete:
+    def test_delete_all_files_and_bookmarks(self, session):
+        # Seed some data first
+        files = [
+            ("files", ("TEST_bulk1.html", b"<p>1</p>", "text/html")),
+            ("files", ("TEST_bulk2.html", b"<p>2</p>", "text/html")),
+        ]
+        r = session.post(f"{API}/files/upload", files=files)
+        assert r.status_code == 200
+        created = r.json()
+        assert len(created) == 2
+
+        # Add a bookmark
+        rb = session.post(
+            f"{API}/bookmarks",
+            json={"file_id": created[0]["id"], "name": "TEST_bulk_bm"},
+        )
+        assert rb.status_code == 200
+
+        # Pre-conditions
+        pre_files = session.get(f"{API}/files").json()["files"]
+        pre_bms = session.get(f"{API}/bookmarks").json()["bookmarks"]
+        assert len(pre_files) >= 2
+        assert len(pre_bms) >= 1
+
+        # Bulk delete
+        rd = session.delete(f"{API}/files")
+        assert rd.status_code == 200, rd.text
+        data = rd.json()
+        assert data["status"] == "deleted"
+        assert data["files_deleted"] == len(pre_files)
+        assert data["bookmarks_deleted"] == len(pre_bms)
+        assert isinstance(data["files_deleted"], int)
+        assert isinstance(data["bookmarks_deleted"], int)
+
+        # Verify both collections are empty
+        assert session.get(f"{API}/files").json()["files"] == []
+        assert session.get(f"{API}/bookmarks").json()["bookmarks"] == []
+
+    def test_delete_all_when_empty(self, session):
+        # Should be empty after previous test; calling again still 200 with 0 counts
+        rd = session.delete(f"{API}/files")
+        assert rd.status_code == 200
+        data = rd.json()
+        assert data["files_deleted"] == 0
+        assert data["bookmarks_deleted"] == 0
+
+
 # ----- Cleanup -----
 class TestCleanup:
     def test_delete_all_test_files(self, session, created_ids):

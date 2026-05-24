@@ -1,15 +1,61 @@
-import { useState } from "react";
+import { useState, useRef, useEffect, useCallback } from "react";
 import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
 import { Dropzone } from "@/components/Dropzone";
 import { FileList } from "@/components/FileList";
 import { BookmarkList } from "@/components/BookmarkList";
 import { PasteEditor } from "@/components/PasteEditor";
-import { FileCode, Bookmark, ClipboardPaste, Search, X } from "lucide-react";
+import { useApp } from "@/context/AppContext";
+import { FileCode, Bookmark, ClipboardPaste, Search, X, Trash2 } from "lucide-react";
 
 export function Sidebar() {
   const [activeTab, setActiveTab] = useState("files");
   const [searchQuery, setSearchQuery] = useState("");
+  const [showClearDialog, setShowClearDialog] = useState(false);
+  const searchRef = useRef(null);
+  const { files, clearAllFiles } = useApp();
+
+  // Global keyboard shortcut: Ctrl+F / Cmd+F to focus search
+  useEffect(function () {
+    function handleKeyDown(e) {
+      if ((e.ctrlKey || e.metaKey) && e.key === "f") {
+        e.preventDefault();
+        setActiveTab("files");
+        // Small delay so tab switch renders the input first
+        setTimeout(function () {
+          if (searchRef.current) {
+            searchRef.current.focus();
+            searchRef.current.select();
+          }
+        }, 50);
+      }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return function () { window.removeEventListener("keydown", handleKeyDown); };
+  }, []);
+
+  // Escape clears search when input focused
+  var handleSearchKeyDown = useCallback(function (e) {
+    if (e.key === "Escape") {
+      setSearchQuery("");
+      if (searchRef.current) searchRef.current.blur();
+    }
+  }, []);
+
+  var handleConfirmClear = useCallback(function () {
+    clearAllFiles();
+    setShowClearDialog(false);
+    setSearchQuery("");
+  }, [clearAllFiles]);
 
   return (
     <aside className="sidebar" data-testid="sidebar">
@@ -48,14 +94,16 @@ export function Sidebar() {
 
           <TabsContent value="files" className="flex-1 flex flex-col overflow-hidden mt-0 min-h-0">
             <Dropzone />
-            <div className="px-3 pb-2">
+            <div className="px-3 pb-2 space-y-2">
               <div className="relative">
                 <Search size={14} className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
                 <input
+                  ref={searchRef}
                   type="text"
-                  placeholder="Search files..."
+                  placeholder="Search files...  (Ctrl+F)"
                   value={searchQuery}
                   onChange={function (e) { setSearchQuery(e.target.value); }}
+                  onKeyDown={handleSearchKeyDown}
                   className="w-full h-8 pl-8 pr-8 text-xs border border-slate-200 bg-white outline-none focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10 font-medium placeholder:text-slate-400"
                   data-testid="file-search-input"
                 />
@@ -64,12 +112,23 @@ export function Sidebar() {
                     onClick={function () { setSearchQuery(""); }}
                     className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-400 hover:text-slate-600"
                     data-testid="file-search-clear"
-                    aria-label="Clear search"
+                    aria-label="Clear search (Escape)"
                   >
                     <X size={14} />
                   </button>
                 )}
               </div>
+              {files.length > 0 && (
+                <Button
+                  variant="outline"
+                  className="w-full rounded-none text-xs h-7 uppercase tracking-wider font-semibold text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
+                  onClick={function () { setShowClearDialog(true); }}
+                  data-testid="clear-all-files-btn"
+                >
+                  <Trash2 size={12} className="mr-1.5" />
+                  Clear All ({files.length})
+                </Button>
+              )}
             </div>
             <ScrollArea className="flex-1 min-h-0">
               <FileList searchQuery={searchQuery} />
@@ -87,6 +146,36 @@ export function Sidebar() {
           </TabsContent>
         </Tabs>
       </div>
+
+      {/* Clear All Confirmation Dialog */}
+      <Dialog open={showClearDialog} onOpenChange={setShowClearDialog}>
+        <DialogContent className="rounded-none sm:rounded-none" data-testid="clear-all-dialog">
+          <DialogHeader>
+            <DialogTitle className="text-base font-bold tracking-tight">Clear all files?</DialogTitle>
+            <DialogDescription className="text-sm text-slate-500">
+              This will permanently delete all {files.length} file{files.length !== 1 ? "s" : ""} and their bookmarks. This action cannot be undone.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2 sm:gap-0">
+            <Button
+              variant="outline"
+              className="rounded-none"
+              onClick={function () { setShowClearDialog(false); }}
+              data-testid="clear-all-cancel-btn"
+            >
+              Cancel
+            </Button>
+            <Button
+              className="rounded-none bg-[#FF3333] hover:bg-red-600 text-white"
+              onClick={handleConfirmClear}
+              data-testid="clear-all-confirm-btn"
+            >
+              <Trash2 size={14} className="mr-1.5" />
+              Delete All
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }

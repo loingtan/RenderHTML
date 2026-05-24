@@ -190,6 +190,17 @@ async def delete_file(file_id: str):
     return {"status": "deleted"}
 
 
+@api_router.delete("/files")
+async def delete_all_files():
+    file_result = await db.files.delete_many({})
+    bm_result = await db.bookmarks.delete_many({})
+    return {
+        "status": "deleted",
+        "files_deleted": file_result.deleted_count,
+        "bookmarks_deleted": bm_result.deleted_count,
+    }
+
+
 @api_router.post("/bookmarks", response_model=BookmarkDoc)
 async def create_bookmark(data: BookmarkCreate):
     # Verify file exists
