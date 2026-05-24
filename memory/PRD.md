@@ -35,6 +35,9 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 - **Search/filter bar**: instant filtering by name/path, flat results with path context
 - **Keyboard shortcuts**: Ctrl+F to focus search, Escape to clear
 - **Bulk delete**: Clear All button with confirmation dialog
+- **Sort dropdown**: 7 sort options (name, date, size, type)
+- **File rename**: Inline rename with pencil icon, Enter/Escape/confirm/cancel
+- **Export bookmarks**: Download bookmarks as JSON file
 - Paste editor with Preview and Save & Render
 - iframe-based HTML renderer with toolbar
 - Viewport toggle (desktop/mobile)
@@ -42,11 +45,16 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 - Bookmark system
 - Scrollable sidebar with proper overflow handling
 
+## Local Hosting
+- Docker Compose: `docker-compose.yml` with MongoDB, Backend, Frontend services
+- Dockerfiles for backend (Python 3.11) and frontend (Node 20 + nginx)
+- One-click start script: `./start.sh`
+- Comprehensive README with Docker and non-Docker setup instructions
+
 ## Test Results
-- Backend: 100% (23/23 tests passed across 4 iterations)
+- Backend: 100% (28/28 tests passed across 5 iterations)
 - Frontend: 100% (all flows validated)
 
 ## Prioritized Backlog
-- P2: File rename capability
-- P3: Export bookmarks list
 - P3: Shareable public links for rendered pages
+- P3: Import bookmarks from JSON
