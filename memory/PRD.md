@@ -25,13 +25,16 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 - Delete files and bookmarks
 
 ## What's Been Implemented (2026-05-23)
-- Full backend API: file upload, paste, list, get content, delete, bookmarks CRUD
+- Full backend API: file upload, paste, list, get content, delete, bookmarks CRUD, **bulk delete**
 - MHTML parsing using Python email module
 - **Folder upload with tree structure**: stores relative_path and folder_group per file
 - Frontend: Swiss Brutalist design with sidebar + renderer layout
 - Tabs: Files, Bookmarks, Paste
 - Dropzone with drag-and-drop file upload
 - **Folder upload with tree view**: collapsible folder hierarchy, indented files, chevron toggles
+- **Search/filter bar**: instant filtering by name/path, flat results with path context
+- **Keyboard shortcuts**: Ctrl+F to focus search, Escape to clear
+- **Bulk delete**: Clear All button with confirmation dialog
 - Paste editor with Preview and Save & Render
 - iframe-based HTML renderer with toolbar
 - Viewport toggle (desktop/mobile)
