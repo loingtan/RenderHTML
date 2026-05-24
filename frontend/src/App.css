@@ -211,6 +211,22 @@
   opacity: 1;
 }
 
+/* Folder tree indentation guide lines */
+[data-testid^="folder-node-"] > div:last-child {
+  position: relative;
+}
+
+[data-testid^="folder-node-"] > div:last-child::before {
+  content: "";
+  position: absolute;
+  left: 24px;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: #E2E8F0;
+  pointer-events: none;
+}
+
 .empty-state {
   flex: 1;
   display: flex;

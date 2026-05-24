@@ -94,6 +94,71 @@ class TestFiles:
         data = r.json()
         assert len(data) == 2
         for d in data:
+            # No paths passed -> empty relative_path / folder_group
+            assert d.get("relative_path", "") == ""
+            assert d.get("folder_group", "") == ""
+            created_ids["files"].append(d["id"])
+
+    # ----- NEW: folder upload with paths -----
+    def test_upload_with_paths_creates_folder_metadata(self, session, created_ids):
+        import json as _json
+        files = [
+            ("files", ("index.html", b"<p>idx</p>", "text/html")),
+            ("files", ("about.html", b"<p>about</p>", "text/html")),
+            ("files", ("contact.html", b"<p>contact</p>", "text/html")),
+        ]
+        paths = [
+            "TEST_mysite/index.html",
+            "TEST_mysite/pages/about.html",
+            "TEST_mysite/pages/contact.html",
+        ]
+        data = {"paths": _json.dumps(paths)}
+        r = session.post(f"{API}/files/upload", files=files, data=data)
+        assert r.status_code == 200, r.text
+        result = r.json()
+        assert len(result) == 3
+        # Each file should carry its relative_path & folder_group == top-level dir
+        for d, p in zip(result, paths):
+            assert d["relative_path"] == p
+            assert d["folder_group"] == "TEST_mysite"
+            created_ids["files"].append(d["id"])
+
+        # Verify persistence via /files listing
+        rlist = session.get(f"{API}/files")
+        assert rlist.status_code == 200
+        listed = {f["id"]: f for f in rlist.json()["files"]}
+        for d in result:
+            assert d["id"] in listed
+            assert listed[d["id"]]["relative_path"] == d["relative_path"]
+            assert listed[d["id"]]["folder_group"] == "TEST_mysite"
+
+    def test_upload_with_malformed_paths_json_does_not_crash(self, session, created_ids):
+        # Invalid JSON for paths -> server should treat as empty list, not error
+        files = [("files", ("TEST_malformed.html", b"<p>x</p>", "text/html"))]
+        r = session.post(f"{API}/files/upload", files=files, data={"paths": "not-json"})
+        assert r.status_code == 200, r.text
+        d = r.json()[0]
+        assert d["relative_path"] == ""
+        assert d["folder_group"] == ""
+        created_ids["files"].append(d["id"])
+
+    def test_upload_paths_fewer_than_files(self, session, created_ids):
+        import json as _json
+        files = [
+            ("files", ("TEST_p1.html", b"<p>1</p>", "text/html")),
+            ("files", ("TEST_p2.html", b"<p>2</p>", "text/html")),
+        ]
+        paths = ["TEST_folderX/TEST_p1.html"]  # only 1 path for 2 files
+        r = session.post(f"{API}/files/upload", files=files, data={"paths": _json.dumps(paths)})
+        assert r.status_code == 200
+        result = r.json()
+        assert len(result) == 2
+        assert result[0]["relative_path"] == "TEST_folderX/TEST_p1.html"
+        assert result[0]["folder_group"] == "TEST_folderX"
+        # 2nd file has no matching path -> empty
+        assert result[1]["relative_path"] == ""
+        assert result[1]["folder_group"] == ""
+        for d in result:
             created_ids["files"].append(d["id"])
 
     def test_paste_html(self, session, created_ids):

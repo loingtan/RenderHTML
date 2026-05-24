@@ -35,9 +35,12 @@ export function AppProvider({ children }) {
     setLoading(true);
     try {
       const formData = new FormData();
+      const paths = [];
       for (const f of fileList) {
         formData.append("files", f);
+        paths.push(f.webkitRelativePath || "");
       }
+      formData.append("paths", JSON.stringify(paths));
       const res = await axios.post(`${API}/files/upload`, formData);
       toast.success(`${res.data.length} file(s) uploaded`);
       await fetchFiles();

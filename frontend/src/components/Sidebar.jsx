@@ -17,7 +17,7 @@ export function Sidebar() {
         <h1>HTML Viewer</h1>
       </div>
       <div className="sidebar-content">
-        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full min-h-0">
           <TabsList className="w-full rounded-none border-b border-slate-200 bg-transparent p-0 h-10" data-testid="sidebar-tabs">
             <TabsTrigger
               value="files"
@@ -45,14 +45,14 @@ export function Sidebar() {
             </TabsTrigger>
           </TabsList>
 
-          <TabsContent value="files" className="flex-1 flex flex-col overflow-hidden mt-0">
+          <TabsContent value="files" className="flex-1 flex flex-col overflow-hidden mt-0 min-h-0">
             <Dropzone />
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
               <FileList />
             </ScrollArea>
           </TabsContent>
 
-          <TabsContent value="bookmarks" className="flex-1 overflow-hidden mt-0">
+          <TabsContent value="bookmarks" className="flex-1 overflow-hidden mt-0 min-h-0">
             <ScrollArea className="h-full">
               <BookmarkList />
             </ScrollArea>

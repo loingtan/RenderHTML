@@ -1,0 +1,44 @@
+{
+  "summary": "Tested NEW folder tree upload feature plus regression of existing flows. Backend: added 4 new pytest tests for folder upload (paths metadata, malformed paths, fewer paths than files, plus existing 17). All 21/21 pytest tests passed (100%). Frontend: verified folder tree builds correctly from webkitRelativePath, chevron icons toggle, indentation is 16px per depth level (root=12px, depth1=28px, depth2=44px), collapse hides nested folders AND files, expand restores them, standalone files appear at root level after folders, sidebar ScrollArea has proper overflow (scrollHeight 2268 > clientHeight 302), clicking a nested file loads it in iframe, paste flow still saves+renders, bookmark flow still works.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "FileList - folder rows", "issues": ["data-testid for folder rows is 'folder-toggle-{name}' using only the last path segment. Two distinct folders with the same name (e.g. 'pages' under different parents) produce duplicate testids, breaking selector uniqueness in tests and could conflict with screen readers/keys. Recommend including full path: e.g. 'folder-toggle-{path}'."]},
+      {"screen": "FileList - folder rows", "issues": ["Folder row is a div with onClick but has no role=button / tabIndex / keyboard handler, so it is not keyboard accessible. Add role='button' tabIndex=0 and Enter/Space handling."]},
+      {"screen": "Database state", "issues": ["~30 leftover TEST_-prefixed and 'my-website/...' files exist in DB from earlier dev/test runs. These do not break the app but clutter the sidebar. Consider a manual cleanup or add a 'clear all' admin endpoint."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Optional/Low) Use full folder path in data-testid for folder toggle rows to make them unique when folder names repeat.",
+    "(Optional/Low) Make folder rows keyboard accessible (role/tabIndex/keydown).",
+    "(Optional/Low) Clear leftover dev/test files from MongoDB or expose a bulk delete admin endpoint.",
+    "(Carry-over from iteration_1) Consider dropping allow-same-origin from iframe sandbox in Renderer.jsx; verify empty-state background image URL reachability."
+  ],
+  "critical_code_review_comments": [
+    "server.py: upload_files swallows JSON parse error for 'paths' silently (returns empty list). For client debuggability, log a warning when paths JSON is invalid.",
+    "server.py: zip-by-index between files and path_list is fragile; if frontend sends paths in a different order than files, metadata will be wrong. Frontend currently iterates same list so it's fine, but consider keying by filename or sending tuples.",
+    "FileList.jsx: buildRows() runs on every render via useMemo but inner loops do O(F*D) work on every files-change; fine for current scale but watch for very large folders.",
+    "FileList.jsx: 'name' for the top-level folder uses parts[i-1] which for top-level folder equals parts[0] (top dir name) - correct. For intermediate folders it uses parts[i-1] = parent name, NOT current folder name. Re-check: for parts=['a','b','c.html'] at i=2, parts[i-1]=parts[1]='b' which IS the current folder name. OK, logic verified.",
+    "Folder click handler also fires on inner Button clicks since folder div has onClick without stopPropagation on children; not a current issue because folder has no inner interactive children, but be aware if delete/menu buttons are added later.",
+    "server.py: deprecated @app.on_event still present (carry-over from iter_1) - migrate to FastAPI lifespan."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (added 3 new folder-upload tests: test_upload_with_paths_creates_folder_metadata, test_upload_with_malformed_paths_json_does_not_crash, test_upload_paths_fewer_than_files; extended test_upload_multiple_files to assert empty relative_path/folder_group)"
+  ],
+  "success_rate": {"backend": "100% (21/21)", "frontend": "100% (folder tree + collapse + nested-file click + standalone files + scroll + paste + bookmark)"},
+  "test_credentials": "N/A - no authentication in this app",
+  "seed_data_creation": "Test uploads with paths like ['TEST_mysite/index.html','TEST_mysite/pages/about.html','TEST_mysite/pages/contact.html'] created via API; cleanup performed via DELETE in test teardown. Some browser-side test files (TEST_treesite/*, TEST_root2/*, TEST_standalone, TEST_paste_after_folder, TEST_for_cascade) were also created and removed.",
+  "retest_needed": false,
+  "main_agent_can_self_test": true,
+  "context_for_next_testing_agent": "Backend tests in /app/backend/tests/backend_test.py now cover the new 'paths' Form field on /api/files/upload (4 folder-related tests including malformed JSON & length-mismatch edge cases). FileDoc carries relative_path & folder_group. Frontend uses webkitRelativePath as paths array (AppContext.jsx ~line 38). FileList.jsx buildRows() flattens the tree; collapse state lives in component-local useState. Folder data-testid is 'folder-toggle-{name}' (NOT path), so when writing tests, prefer full-path selection via XPath or page.locator with parent context if multiple folders share a name. App URL: https://html-display-engine.preview.emergentagent.com",
+  "rca_of_the_issue": "Initial Playwright run flagged 'collapse did not hide nested rows' but on targeted re-test with full DOM snapshot, the collapse logic in isHiddenByParent() works correctly. The false positive was caused by leftover DB state containing another folder named 'pages' under a different parent ('my-website'); the generic data-testid 'folder-toggle-pages' matched the unrelated still-visible row. No functional bug; the only related concern is the non-unique testid (documented under design_issues)."
+}

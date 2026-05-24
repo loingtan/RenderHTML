@@ -1,4 +1,4 @@
-from fastapi import FastAPI, APIRouter, UploadFile, File, HTTPException
+from fastapi import FastAPI, APIRouter, UploadFile, File, Form, HTTPException
 from fastapi.responses import HTMLResponse
 from dotenv import load_dotenv
 from starlette.middleware.cors import CORSMiddleware
@@ -38,6 +38,8 @@ class FileDoc(BaseModel):
     name: str
     file_type: str  # "html" or "mhtml"
     size: int = 0
+    relative_path: str = ""       # e.g. "myfolder/sub/page.html"
+    folder_group: str = ""        # top-level folder name for grouping
     created_at: str = Field(default_factory=lambda: datetime.now(timezone.utc).isoformat())
 
 class FileListResponse(BaseModel):
@@ -100,13 +102,32 @@ async def root():
 
 
 @api_router.post("/files/upload", response_model=List[FileDoc])
-async def upload_files(files: List[UploadFile] = File(...)):
+async def upload_files(
+    files: List[UploadFile] = File(...),
+    paths: Optional[str] = Form(None),
+):
+    import json as _json
+    path_list = []
+    if paths:
+        try:
+            path_list = _json.loads(paths)
+        except Exception:
+            path_list = []
+
     results = []
-    for f in files:
+    for idx, f in enumerate(files):
         raw = await f.read()
         name = f.filename or "unknown"
         ext = name.rsplit(".", 1)[-1].lower() if "." in name else ""
-        
+
+        # Determine relative path from the paths metadata
+        rel_path = path_list[idx] if idx < len(path_list) else ""
+        folder_group = ""
+        if rel_path:
+            parts = rel_path.replace("\\", "/").split("/")
+            if len(parts) > 1:
+                folder_group = parts[0]  # top-level folder name
+
         if ext in ("mhtml", "mht"):
             content = parse_mhtml(raw)
             file_type = "mhtml"
@@ -114,16 +135,21 @@ async def upload_files(files: List[UploadFile] = File(...)):
             content = raw.decode("utf-8", errors="replace")
             file_type = "html"
         else:
-            # Try to treat as HTML anyway
             content = raw.decode("utf-8", errors="replace")
             file_type = "html"
-        
-        file_doc = FileDoc(name=name, file_type=file_type, size=len(raw))
+
+        file_doc = FileDoc(
+            name=name,
+            file_type=file_type,
+            size=len(raw),
+            relative_path=rel_path,
+            folder_group=folder_group,
+        )
         doc = file_doc.model_dump()
         doc["content"] = content
         await db.files.insert_one(doc)
         results.append(file_doc)
-    
+
     return results
 
 
