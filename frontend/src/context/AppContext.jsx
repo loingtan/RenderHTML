@@ -130,6 +130,36 @@ export function AppProvider({ children }) {
     }
   }, [fetchFiles, fetchBookmarks]);
 
+  const renameFile = useCallback(async (fileId, newName) => {
+    try {
+      await axios.patch(`${API}/files/${fileId}/rename`, { name: newName });
+      toast.success("Renamed");
+      if (activeFile?.id === fileId) {
+        setActiveFile(function (prev) { return prev ? { ...prev, name: newName } : prev; });
+      }
+      await fetchFiles();
+      await fetchBookmarks();
+    } catch (e) {
+      toast.error("Rename failed");
+    }
+  }, [activeFile, fetchFiles, fetchBookmarks]);
+
+  const exportBookmarks = useCallback(async () => {
+    try {
+      const res = await axios.get(`${API}/bookmarks/export`);
+      const blob = new Blob([JSON.stringify(res.data, null, 2)], { type: "application/json" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = "bookmarks-export.json";
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("Bookmarks exported");
+    } catch (e) {
+      toast.error("Export failed");
+    }
+  }, []);
+
   const value = {
     files,
     bookmarks,
@@ -147,6 +177,8 @@ export function AppProvider({ children }) {
     addBookmark,
     removeBookmark,
     clearAllFiles,
+    renameFile,
+    exportBookmarks,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

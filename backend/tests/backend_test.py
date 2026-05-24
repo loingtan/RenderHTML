@@ -326,6 +326,91 @@ class TestBulkDelete:
         assert data["bookmarks_deleted"] == 0
 
 
+# ----- Rename (NEW) -----
+class TestRename:
+    def test_rename_file_updates_name_and_bookmark(self, session):
+        # Create a file
+        rf = session.post(f"{API}/files/paste", json={"name": "TEST_orig", "content": "<p>x</p>"})
+        assert rf.status_code == 200
+        fid = rf.json()["id"]
+
+        # Bookmark it
+        rb = session.post(f"{API}/bookmarks", json={"file_id": fid, "name": "TEST_orig.html"})
+        assert rb.status_code == 200
+        bid = rb.json()["id"]
+
+        # Rename
+        rn = session.patch(f"{API}/files/{fid}/rename", json={"name": "TEST_renamed.html"})
+        assert rn.status_code == 200, rn.text
+        data = rn.json()
+        assert data["status"] == "renamed"
+        assert data["name"] == "TEST_renamed.html"
+
+        # Verify file name updated via list
+        rlist = session.get(f"{API}/files").json()["files"]
+        found = [f for f in rlist if f["id"] == fid]
+        assert len(found) == 1
+        assert found[0]["name"] == "TEST_renamed.html"
+
+        # Verify bookmark name also updated
+        bms = session.get(f"{API}/bookmarks").json()["bookmarks"]
+        found_b = [b for b in bms if b["id"] == bid]
+        assert len(found_b) == 1
+        assert found_b[0]["name"] == "TEST_renamed.html"
+
+        # cleanup
+        session.delete(f"{API}/files/{fid}")
+
+    def test_rename_empty_name_rejected(self, session):
+        rf = session.post(f"{API}/files/paste", json={"name": "TEST_empty", "content": "<p>x</p>"})
+        fid = rf.json()["id"]
+        rn = session.patch(f"{API}/files/{fid}/rename", json={"name": "   "})
+        assert rn.status_code == 400
+        session.delete(f"{API}/files/{fid}")
+
+    def test_rename_nonexistent_returns_404(self, session):
+        rn = session.patch(f"{API}/files/totally-fake-xyz/rename", json={"name": "anything"})
+        assert rn.status_code == 404
+
+
+# ----- Export Bookmarks (NEW) -----
+class TestExportBookmarks:
+    def test_export_bookmarks_structure(self, session):
+        # Seed file + bookmark
+        rf = session.post(f"{API}/files/paste", json={"name": "TEST_export", "content": "<p>x</p>"})
+        fid = rf.json()["id"]
+        rb = session.post(f"{API}/bookmarks", json={"file_id": fid, "name": "TEST_export_bm", "note": "n"})
+        bid = rb.json()["id"]
+
+        re = session.get(f"{API}/bookmarks/export")
+        assert re.status_code == 200, re.text
+        data = re.json()
+        assert "bookmarks" in data
+        assert "count" in data
+        assert "exported_at" in data
+        assert isinstance(data["bookmarks"], list)
+        assert isinstance(data["count"], int)
+        assert data["count"] == len(data["bookmarks"])
+        # Our created bookmark should be present
+        ids = [b["id"] for b in data["bookmarks"]]
+        assert bid in ids
+        # No mongo _id leakage
+        for b in data["bookmarks"]:
+            assert "_id" not in b
+
+        # cleanup
+        session.delete(f"{API}/files/{fid}")
+
+    def test_export_empty_bookmarks(self, session):
+        # Clear all
+        session.delete(f"{API}/files")
+        re = session.get(f"{API}/bookmarks/export")
+        assert re.status_code == 200
+        data = re.json()
+        assert data["count"] == 0
+        assert data["bookmarks"] == []
+
+
 # ----- Cleanup -----
 class TestCleanup:
     def test_delete_all_test_files(self, session, created_ids):

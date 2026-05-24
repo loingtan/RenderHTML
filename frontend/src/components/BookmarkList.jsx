@@ -1,10 +1,10 @@
 import { useApp } from "@/context/AppContext";
-import { Bookmark, Trash2 } from "lucide-react";
+import { Bookmark, Trash2, Download } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
 export function BookmarkList() {
-  const { bookmarks, loadFileContent, removeBookmark } = useApp();
+  const { bookmarks, loadFileContent, removeBookmark, exportBookmarks } = useApp();
 
   if (bookmarks.length === 0) {
     return (
@@ -16,6 +16,17 @@ export function BookmarkList() {
 
   return (
     <div data-testid="bookmark-list">
+      <div className="px-3 py-2">
+        <Button
+          variant="outline"
+          className="w-full rounded-none text-xs h-7 uppercase tracking-wider font-semibold"
+          onClick={exportBookmarks}
+          data-testid="export-bookmarks-btn"
+        >
+          <Download size={12} className="mr-1.5" />
+          Export Bookmarks ({bookmarks.length})
+        </Button>
+      </div>
       {bookmarks.map((bm) => (
         <div
           key={bm.id}

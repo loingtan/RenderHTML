@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import { FileCode, FileText, Trash2, Folder, FolderOpen, ChevronRight, ChevronDown } from "lucide-react";
+import { FileCode, FileText, Trash2, Folder, FolderOpen, ChevronRight, ChevronDown, Pencil, Check, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -98,7 +98,10 @@ export function FileList({ searchQuery, sortBy }) {
   var activeFile = app.activeFile;
   var loadFileContent = app.loadFileContent;
   var deleteFile = app.deleteFile;
+  var renameFile = app.renameFile;
   var [collapsedFolders, setCollapsedFolders] = useState({});
+  var [editingId, setEditingId] = useState(null);
+  var [editName, setEditName] = useState("");
 
   var query = (searchQuery || "").trim().toLowerCase();
   var currentSort = sortBy || "newest";
@@ -200,44 +203,107 @@ export function FileList({ searchQuery, sortBy }) {
 
         // File row
         var file = row.file;
+        var isEditing = editingId === file.id;
         return (
           <div
             key={file.id}
             className={"file-item" + (activeFile && activeFile.id === file.id ? " active" : "")}
             style={{ paddingLeft: 12 + row.depth * 16 + "px" }}
-            onClick={function () { loadFileContent(file.id, file.name); }}
+            onClick={function () { if (!isEditing) loadFileContent(file.id, file.name); }}
             data-testid={"file-item-" + file.id}
           >
             <div className="file-item-icon">
               {file.file_type === "mhtml" ? <FileText size={16} /> : <FileCode size={16} />}
             </div>
             <div className="file-item-info">
-              <div className="file-item-name">{file.name}</div>
-              <div className="file-item-meta">
-                {file.file_type.toUpperCase()} &middot; {formatSize(file.size)}
-                {(query || currentSort !== "newest") && file.relative_path ? " \u00B7 " + file.relative_path : ""}
-              </div>
-            </div>
-            <div className="file-item-actions">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-7 w-7 rounded-none text-slate-400 hover:text-red-500"
-                    onClick={function (e) {
-                      e.stopPropagation();
-                      deleteFile(file.id);
+              {isEditing ? (
+                <div className="flex items-center gap-1" onClick={function (e) { e.stopPropagation(); }}>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={function (e) { setEditName(e.target.value); }}
+                    onKeyDown={function (e) {
+                      if (e.key === "Enter") {
+                        if (editName.trim()) { renameFile(file.id, editName.trim()); }
+                        setEditingId(null);
+                      }
+                      if (e.key === "Escape") { setEditingId(null); }
                     }}
-                    data-testid={"delete-file-" + file.id}
-                    aria-label="Delete file"
+                    autoFocus
+                    className="text-xs border border-[#0000FF] bg-white px-1.5 py-0.5 w-full outline-none focus:ring-1 focus:ring-[#0000FF]/20"
+                    data-testid={"rename-input-" + file.id}
+                  />
+                  <button
+                    onClick={function () {
+                      if (editName.trim()) { renameFile(file.id, editName.trim()); }
+                      setEditingId(null);
+                    }}
+                    className="text-green-600 hover:text-green-700 flex-shrink-0"
+                    data-testid={"rename-confirm-" + file.id}
+                    aria-label="Confirm rename"
                   >
-                    <Trash2 size={14} />
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Delete file</TooltipContent>
-              </Tooltip>
+                    <Check size={14} />
+                  </button>
+                  <button
+                    onClick={function () { setEditingId(null); }}
+                    className="text-slate-400 hover:text-slate-600 flex-shrink-0"
+                    data-testid={"rename-cancel-" + file.id}
+                    aria-label="Cancel rename"
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+              ) : (
+                <>
+                  <div className="file-item-name">{file.name}</div>
+                  <div className="file-item-meta">
+                    {file.file_type.toUpperCase()} &middot; {formatSize(file.size)}
+                    {(query || currentSort !== "newest") && file.relative_path ? " \u00B7 " + file.relative_path : ""}
+                  </div>
+                </>
+              )}
             </div>
+            {!isEditing && (
+              <div className="file-item-actions">
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-none text-slate-400 hover:text-[#0000FF]"
+                      onClick={function (e) {
+                        e.stopPropagation();
+                        setEditingId(file.id);
+                        setEditName(file.name);
+                      }}
+                      data-testid={"rename-file-" + file.id}
+                      aria-label="Rename file"
+                    >
+                      <Pencil size={12} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Rename</TooltipContent>
+                </Tooltip>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 rounded-none text-slate-400 hover:text-red-500"
+                      onClick={function (e) {
+                        e.stopPropagation();
+                        deleteFile(file.id);
+                      }}
+                      data-testid={"delete-file-" + file.id}
+                      aria-label="Delete file"
+                    >
+                      <Trash2 size={14} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Delete file</TooltipContent>
+                </Tooltip>
+              </div>
+            )}
           </div>
         );
       })}

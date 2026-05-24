@@ -66,6 +66,10 @@ class BookmarkListResponse(BaseModel):
     bookmarks: List[BookmarkDoc]
 
 
+class RenameInput(BaseModel):
+    name: str
+
+
 def parse_mhtml(raw_bytes: bytes) -> str:
     """Parse MHTML file and extract main HTML content."""
     try:
@@ -185,9 +189,27 @@ async def delete_file(file_id: str):
     result = await db.files.delete_one({"id": file_id})
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="File not found")
-    # Also remove bookmarks for this file
     await db.bookmarks.delete_many({"file_id": file_id})
     return {"status": "deleted"}
+
+
+@api_router.patch("/files/{file_id}/rename")
+async def rename_file(file_id: str, data: RenameInput):
+    new_name = data.name.strip()
+    if not new_name:
+        raise HTTPException(status_code=400, detail="Name cannot be empty")
+    result = await db.files.update_one(
+        {"id": file_id},
+        {"$set": {"name": new_name}},
+    )
+    if result.matched_count == 0:
+        raise HTTPException(status_code=404, detail="File not found")
+    # Also update bookmark name if it exists
+    await db.bookmarks.update_many(
+        {"file_id": file_id},
+        {"$set": {"name": new_name}},
+    )
+    return {"status": "renamed", "name": new_name}
 
 
 @api_router.delete("/files")
@@ -231,6 +253,12 @@ async def delete_bookmark(bookmark_id: str):
     if result.deleted_count == 0:
         raise HTTPException(status_code=404, detail="Bookmark not found")
     return {"status": "deleted"}
+
+
+@api_router.get("/bookmarks/export")
+async def export_bookmarks():
+    bookmarks = await db.bookmarks.find({}, {"_id": 0}).sort("created_at", -1).to_list(500)
+    return {"bookmarks": bookmarks, "exported_at": datetime.now(timezone.utc).isoformat(), "count": len(bookmarks)}
 
 
 app.include_router(api_router)
