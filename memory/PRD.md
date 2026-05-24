@@ -27,15 +27,17 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 ## What's Been Implemented (2026-05-23)
 - Full backend API: file upload, paste, list, get content, delete, bookmarks CRUD
 - MHTML parsing using Python email module
+- **Folder upload with tree structure**: stores relative_path and folder_group per file
 - Frontend: Swiss Brutalist design with sidebar + renderer layout
 - Tabs: Files, Bookmarks, Paste
 - Dropzone with drag-and-drop file upload
-- Folder upload support via webkitdirectory
+- **Folder upload with tree view**: collapsible folder hierarchy, indented files, chevron toggles
 - Paste editor with Preview and Save & Render
 - iframe-based HTML renderer with toolbar
 - Viewport toggle (desktop/mobile)
 - Fullscreen and refresh buttons
 - Bookmark system
+- Scrollable sidebar with proper overflow handling
 
 ## Test Results
 - Backend: 100% (18/18 tests passed)
