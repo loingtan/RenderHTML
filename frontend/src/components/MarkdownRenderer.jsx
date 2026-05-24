@@ -1,4 +1,4 @@
-import { useEffect, useRef, useCallback } from "react";
+import { useEffect, useRef, useCallback, useState } from "react";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
 import rehypeRaw from "rehype-raw";
@@ -55,9 +55,9 @@ export function MarkdownViewer({ content }) {
   );
 }
 
-export function MarkdownEditor({ content, onSave }) {
+export function MarkdownEditor({ content, onSave, onChange }) {
   var ref = useRef(null);
-  var previewRef = useRef(null);
+  var [liveContent, setLiveContent] = useState(content);
 
   var handleSave = useCallback(function () {
     if (ref.current) {
@@ -72,6 +72,12 @@ export function MarkdownEditor({ content, onSave }) {
     }
   }, [handleSave]);
 
+  var handleChange = useCallback(function (e) {
+    var val = e.target.value;
+    setLiveContent(val);
+    if (onChange) onChange(val);
+  }, [onChange]);
+
   return (
     <div className="flex flex-col md:flex-row h-full" data-testid="markdown-editor">
       <div className="flex-1 flex flex-col border-r border-slate-200 min-h-0">
@@ -82,6 +88,7 @@ export function MarkdownEditor({ content, onSave }) {
         <textarea
           ref={ref}
           defaultValue={content}
+          onChange={handleChange}
           onKeyDown={handleKeyDown}
           className="flex-1 resize-none p-4 font-mono text-sm leading-relaxed bg-white text-slate-800 outline-none"
           spellCheck={false}
@@ -92,8 +99,8 @@ export function MarkdownEditor({ content, onSave }) {
         <div className="h-8 px-3 flex items-center border-b border-slate-200 bg-white">
           <span className="text-xs font-semibold uppercase tracking-wider text-slate-500">Preview</span>
         </div>
-        <div ref={previewRef} className="flex-1 overflow-auto bg-white">
-          <MarkdownViewer content={content} />
+        <div className="flex-1 overflow-auto bg-white">
+          <MarkdownViewer content={liveContent} />
         </div>
       </div>
     </div>

@@ -273,6 +273,7 @@ export function Renderer() {
           <MarkdownEditor
             content={editContent}
             onSave={handleSaveMarkdown}
+            onChange={function (val) { setEditContent(val); }}
           />
         )}
         {isPdf && (

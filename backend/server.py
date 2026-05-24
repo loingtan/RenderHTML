@@ -12,8 +12,6 @@ import uuid
 from datetime import datetime, timezone
 import email
 from email import policy
-import quopri
-import base64
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / '.env')

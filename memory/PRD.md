@@ -38,6 +38,9 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 - **Sort dropdown**: 7 sort options (name, date, size, type)
 - **File rename**: Inline rename with pencil icon, Enter/Escape/confirm/cancel
 - **Export bookmarks**: Download bookmarks as JSON file
+- **Markdown rendering**: Full GFM support (tables, lists, code blocks, blockquotes) with Mermaid diagram support
+- **Markdown editing**: Split-pane editor (source + live preview), Ctrl+S and toolbar save, view/edit mode toggle
+- **PDF viewing**: Renders PDFs in browser with fallback download link
 - Paste editor with Preview and Save & Render
 - iframe-based HTML renderer with toolbar
 - Viewport toggle (desktop/mobile)
