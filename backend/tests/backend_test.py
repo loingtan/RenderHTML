@@ -411,6 +411,109 @@ class TestExportBookmarks:
         assert data["bookmarks"] == []
 
 
+# ----- Markdown + PDF + Content Update (NEW) -----
+SAMPLE_MD = "# TEST_Heading\n\n**bold** _italic_\n\n- item1\n- item2\n\n```mermaid\ngraph TD;A-->B;\n```\n"
+# Minimal valid PDF bytes
+SAMPLE_PDF = (
+    b"%PDF-1.4\n"
+    b"1 0 obj<</Type/Catalog/Pages 2 0 R>>endobj\n"
+    b"2 0 obj<</Type/Pages/Kids[3 0 R]/Count 1>>endobj\n"
+    b"3 0 obj<</Type/Page/Parent 2 0 R/MediaBox[0 0 612 792]>>endobj\n"
+    b"xref\n0 4\n0000000000 65535 f\n0000000010 00000 n\n0000000053 00000 n\n0000000100 00000 n\n"
+    b"trailer<</Size 4/Root 1 0 R>>\nstartxref\n149\n%%EOF\n"
+)
+
+
+class TestMarkdownPdf:
+    def test_upload_markdown(self, session, created_ids):
+        files = {"files": ("TEST_doc.md", SAMPLE_MD.encode("utf-8"), "text/markdown")}
+        r = session.post(f"{API}/files/upload", files=files)
+        assert r.status_code == 200, r.text
+        d = r.json()[0]
+        assert d["file_type"] == "markdown"
+        assert d["name"] == "TEST_doc.md"
+        assert d["size"] == len(SAMPLE_MD.encode("utf-8"))
+        created_ids["files"].append(d["id"])
+
+        # GET content -> should be raw markdown text + file_type=markdown
+        rc = session.get(f"{API}/files/{d['id']}/content")
+        assert rc.status_code == 200
+        body = rc.json()
+        assert body["file_type"] == "markdown"
+        assert "TEST_Heading" in body["content"]
+        assert "```mermaid" in body["content"]
+
+    def test_upload_pdf(self, session, created_ids):
+        files = {"files": ("TEST_doc.pdf", SAMPLE_PDF, "application/pdf")}
+        r = session.post(f"{API}/files/upload", files=files)
+        assert r.status_code == 200, r.text
+        d = r.json()[0]
+        assert d["file_type"] == "pdf"
+        assert d["size"] == len(SAMPLE_PDF)
+        created_ids["files"].append(d["id"])
+
+        # Content should be base64-encoded and decodable to original bytes
+        rc = session.get(f"{API}/files/{d['id']}/content")
+        assert rc.status_code == 200
+        body = rc.json()
+        assert body["file_type"] == "pdf"
+        import base64 as _b
+        decoded = _b.b64decode(body["content"])
+        assert decoded == SAMPLE_PDF
+
+    def test_get_content_returns_file_type_field(self, session, created_ids):
+        # Upload a fresh file (prior bulk-delete tests may have wiped DB)
+        files = {"files": ("TEST_typecheck.html", b"<p>tc</p>", "text/html")}
+        r = session.post(f"{API}/files/upload", files=files)
+        fid = r.json()[0]["id"]
+        created_ids["files"].append(fid)
+        rc = session.get(f"{API}/files/{fid}/content")
+        assert rc.status_code == 200
+        body = rc.json()
+        assert "file_type" in body
+        assert body["file_type"] == "html"
+
+    def test_patch_markdown_content_updates_size(self, session, created_ids):
+        # Create a fresh md file
+        files = {"files": ("TEST_edit.md", b"# old\n", "text/markdown")}
+        r = session.post(f"{API}/files/upload", files=files)
+        fid = r.json()[0]["id"]
+        created_ids["files"].append(fid)
+
+        new_content = "# TEST_new heading\n\nMore content"
+        ru = session.patch(f"{API}/files/{fid}/content", json={"content": new_content})
+        assert ru.status_code == 200, ru.text
+        data = ru.json()
+        assert data["status"] == "updated"
+        assert data["size"] == len(new_content.encode("utf-8"))
+
+        # Verify persisted
+        rc = session.get(f"{API}/files/{fid}/content")
+        assert rc.status_code == 200
+        assert rc.json()["content"] == new_content
+
+        # Verify list reflects new size
+        rl = session.get(f"{API}/files").json()["files"]
+        found = [f for f in rl if f["id"] == fid]
+        assert len(found) == 1
+        assert found[0]["size"] == len(new_content.encode("utf-8"))
+
+    def test_patch_non_markdown_rejected(self, session, created_ids):
+        # Upload a fresh HTML file
+        files = {"files": ("TEST_nonmd.html", b"<p>x</p>", "text/html")}
+        r = session.post(f"{API}/files/upload", files=files)
+        html_id = r.json()[0]["id"]
+        created_ids["files"].append(html_id)
+        ru = session.patch(f"{API}/files/{html_id}/content", json={"content": "x"})
+        assert ru.status_code == 400
+        body = ru.json()
+        assert "markdown" in (body.get("detail") or "").lower()
+
+    def test_patch_nonexistent_file_returns_404(self, session):
+        ru = session.patch(f"{API}/files/nonexistent-xyz/content", json={"content": "x"})
+        assert ru.status_code == 404
+
+
 # ----- Cleanup -----
 class TestCleanup:
     def test_delete_all_test_files(self, session, created_ids):

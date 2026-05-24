@@ -138,6 +138,13 @@ async def upload_files(
         elif ext in ("html", "htm"):
             content = raw.decode("utf-8", errors="replace")
             file_type = "html"
+        elif ext == "md":
+            content = raw.decode("utf-8", errors="replace")
+            file_type = "markdown"
+        elif ext == "pdf":
+            import base64 as b64
+            content = b64.b64encode(raw).decode("ascii")
+            file_type = "pdf"
         else:
             content = raw.decode("utf-8", errors="replace")
             file_type = "html"
@@ -181,7 +188,7 @@ async def get_file_content(file_id: str):
     doc = await db.files.find_one({"id": file_id}, {"_id": 0})
     if not doc:
         raise HTTPException(status_code=404, detail="File not found")
-    return {"id": doc["id"], "name": doc["name"], "content": doc.get("content", "")}
+    return {"id": doc["id"], "name": doc["name"], "file_type": doc.get("file_type", "html"), "content": doc.get("content", "")}
 
 
 @api_router.delete("/files/{file_id}")
@@ -210,6 +217,25 @@ async def rename_file(file_id: str, data: RenameInput):
         {"$set": {"name": new_name}},
     )
     return {"status": "renamed", "name": new_name}
+
+
+class ContentUpdateInput(BaseModel):
+    content: str
+
+
+@api_router.patch("/files/{file_id}/content")
+async def update_file_content(file_id: str, data: ContentUpdateInput):
+    doc = await db.files.find_one({"id": file_id}, {"_id": 0, "file_type": 1})
+    if not doc:
+        raise HTTPException(status_code=404, detail="File not found")
+    if doc.get("file_type") != "markdown":
+        raise HTTPException(status_code=400, detail="Only markdown files can be edited")
+    new_size = len(data.content.encode("utf-8"))
+    await db.files.update_one(
+        {"id": file_id},
+        {"$set": {"content": data.content, "size": new_size}},
+    )
+    return {"status": "updated", "size": new_size}
 
 
 @api_router.delete("/files")

@@ -51,7 +51,7 @@ export function Dropzone() {
 
   const isValidFile = (name) => {
     const ext = name.split(".").pop().toLowerCase();
-    return ["html", "htm", "mhtml", "mht"].includes(ext);
+    return ["html", "htm", "mhtml", "mht", "md", "pdf"].includes(ext);
   };
 
   const handleFileSelect = (e) => {
@@ -75,11 +75,11 @@ export function Dropzone() {
         <div className="dropzone-text">
           {loading ? "Uploading..." : "Drop files here or click to upload"}
         </div>
-        <div className="dropzone-subtext">.html, .htm, .mhtml, .mht</div>
+        <div className="dropzone-subtext">.html .mhtml .md .pdf</div>
         <input
           ref={fileInputRef}
           type="file"
-          accept=".html,.htm,.mhtml,.mht"
+          accept=".html,.htm,.mhtml,.mht,.md,.pdf"
           multiple
           onChange={handleFileSelect}
           style={{ display: "none" }}

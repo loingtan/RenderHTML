@@ -74,7 +74,7 @@ export function AppProvider({ children }) {
   const loadFileContent = useCallback(async (fileId, fileName) => {
     try {
       const res = await axios.get(`${API}/files/${fileId}/content`);
-      setActiveFile({ id: fileId, name: fileName || res.data.name });
+      setActiveFile({ id: fileId, name: fileName || res.data.name, file_type: res.data.file_type });
       setActiveContent(res.data.content);
     } catch (e) {
       toast.error("Failed to load file");
@@ -160,6 +160,17 @@ export function AppProvider({ children }) {
     }
   }, []);
 
+  const updateFileContent = useCallback(async (fileId, content) => {
+    try {
+      await axios.patch(`${API}/files/${fileId}/content`, { content });
+      toast.success("Saved");
+      setActiveContent(content);
+      await fetchFiles();
+    } catch (e) {
+      toast.error("Save failed");
+    }
+  }, [fetchFiles]);
+
   const value = {
     files,
     bookmarks,
@@ -179,6 +190,7 @@ export function AppProvider({ children }) {
     clearAllFiles,
     renameFile,
     exportBookmarks,
+    updateFileContent,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

@@ -1,6 +1,6 @@
 import { useState, useMemo } from "react";
 import { useApp } from "@/context/AppContext";
-import { FileCode, FileText, Trash2, Folder, FolderOpen, ChevronRight, ChevronDown, Pencil, Check, X } from "lucide-react";
+import { FileCode, FileText, Trash2, Folder, FolderOpen, ChevronRight, ChevronDown, Pencil, Check, X, FileType } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 
@@ -213,7 +213,10 @@ export function FileList({ searchQuery, sortBy }) {
             data-testid={"file-item-" + file.id}
           >
             <div className="file-item-icon">
-              {file.file_type === "mhtml" ? <FileText size={16} /> : <FileCode size={16} />}
+              {file.file_type === "mhtml" ? <FileText size={16} /> :
+               file.file_type === "markdown" ? <FileType size={16} className="text-[#0000FF]" /> :
+               file.file_type === "pdf" ? <FileText size={16} className="text-red-500" /> :
+               <FileCode size={16} />}
             </div>
             <div className="file-item-info">
               {isEditing ? (

@@ -1,7 +1,9 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useCallback } from "react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
+import { MarkdownViewer, MarkdownEditor } from "@/components/MarkdownRenderer";
+import { PdfRenderer } from "@/components/PdfRenderer";
 import {
   Bookmark,
   BookmarkCheck,
@@ -10,37 +12,76 @@ import {
   Smartphone,
   Maximize2,
   FileCode,
+  FileText,
+  Pencil,
+  Eye,
+  Save,
 } from "lucide-react";
 
+function detectFileType(file) {
+  if (!file) return "unknown";
+  var name = (file.name || "").toLowerCase();
+  if (name.endsWith(".md")) return "markdown";
+  if (name.endsWith(".pdf")) return "pdf";
+  if (name.endsWith(".mhtml") || name.endsWith(".mht")) return "mhtml";
+  return "html";
+}
+
 export function Renderer() {
-  const { activeFile, activeContent, bookmarks, addBookmark } = useApp();
-  const [viewport, setViewport] = useState("desktop");
-  const iframeRef = useRef(null);
+  var app = useApp();
+  var activeFile = app.activeFile;
+  var activeContent = app.activeContent;
+  var bookmarks = app.bookmarks;
+  var addBookmark = app.addBookmark;
+  var updateFileContent = app.updateFileContent;
+  var [viewport, setViewport] = useState("desktop");
+  var [editMode, setEditMode] = useState(false);
+  var [editContent, setEditContent] = useState("");
+  var iframeRef = useRef(null);
 
-  const isBookmarked = activeFile && bookmarks.some((b) => b.file_id === activeFile.id);
+  var isBookmarked = activeFile && bookmarks.some(function (b) { return b.file_id === activeFile.id; });
+  var fileType = activeFile ? (activeFile.file_type || detectFileType(activeFile)) : "unknown";
+  var isMarkdown = fileType === "markdown";
+  var isPdf = fileType === "pdf";
+  var isHtml = fileType === "html" || fileType === "mhtml";
 
-  const handleBookmark = () => {
+  var handleBookmark = useCallback(function () {
     if (activeFile && !isBookmarked && activeFile.id !== "paste-preview") {
       addBookmark(activeFile.id, activeFile.name);
     }
-  };
+  }, [activeFile, isBookmarked, addBookmark]);
 
-  const handleRefresh = () => {
-    if (iframeRef.current) {
-      const doc = iframeRef.current.contentDocument;
+  var handleRefresh = useCallback(function () {
+    if (iframeRef.current && isHtml) {
+      var doc = iframeRef.current.contentDocument;
       if (doc) {
         doc.open();
         doc.write(activeContent);
         doc.close();
       }
     }
-  };
+  }, [activeContent, isHtml]);
 
-  const handleFullscreen = () => {
-    if (iframeRef.current) {
-      iframeRef.current.requestFullscreen?.();
+  var handleFullscreen = useCallback(function () {
+    var el = document.querySelector('[data-testid="render-frame"]');
+    if (el) el.requestFullscreen && el.requestFullscreen();
+  }, []);
+
+  var handleToggleEdit = useCallback(function () {
+    if (!editMode) {
+      setEditContent(activeContent);
+      setEditMode(true);
+    } else {
+      setEditMode(false);
     }
-  };
+  }, [editMode, activeContent]);
+
+  var handleSaveMarkdown = useCallback(function (content) {
+    if (activeFile && activeFile.id !== "paste-preview") {
+      updateFileContent(activeFile.id, content);
+      setEditContent(content);
+    }
+  }, [activeFile, updateFileContent]);
 
   if (!activeFile) {
     return (
@@ -49,15 +90,14 @@ export function Renderer() {
           <div
             className="empty-state-bg"
             style={{
-              backgroundImage: `url(https://static.prod-images.emergentagent.com/jobs/93a3545f-af24-4c6f-bfff-34224c1feb16/images/de0b74c62464117ee3a5e7dce0a2fffed4e6a0b7b777660a3c80635bec0cc7e2.png)`,
+              backgroundImage: "url(https://static.prod-images.emergentagent.com/jobs/93a3545f-af24-4c6f-bfff-34224c1feb16/images/de0b74c62464117ee3a5e7dce0a2fffed4e6a0b7b777660a3c80635bec0cc7e2.png)",
             }}
           />
           <div className="empty-state-content">
             <FileCode size={48} className="empty-state-icon mx-auto" />
             <div className="empty-state-title">No file selected</div>
             <div className="empty-state-desc">
-              Upload an HTML or MHTML file, paste raw HTML, or select a file from
-              the sidebar to begin rendering.
+              Upload HTML, MHTML, Markdown, or PDF files. Paste raw HTML. Select a file from the sidebar to view or edit.
             </div>
           </div>
         </div>
@@ -69,60 +109,111 @@ export function Renderer() {
     <div className="main-workspace" data-testid="main-workspace">
       <div className="toolbar" data-testid="toolbar">
         <div className="toolbar-left">
-          <FileCode size={16} style={{ color: "#0000FF", flexShrink: 0 }} />
+          {isPdf ? <FileText size={16} style={{ color: "#FF3333", flexShrink: 0 }} /> :
+           isMarkdown ? <FileText size={16} style={{ color: "#0000FF", flexShrink: 0 }} /> :
+           <FileCode size={16} style={{ color: "#0000FF", flexShrink: 0 }} />}
           <span className="toolbar-filename" data-testid="toolbar-filename">
             {activeFile.name}
           </span>
+          {isMarkdown && (
+            <span className="text-[10px] font-semibold uppercase tracking-wider text-slate-400 ml-2">
+              {editMode ? "Editing" : "Viewing"}
+            </span>
+          )}
         </div>
         <div className="toolbar-right">
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-none ${viewport === "desktop" ? "bg-slate-100" : ""}`}
-                onClick={() => setViewport("desktop")}
-                data-testid="viewport-desktop-btn"
-                aria-label="Desktop viewport"
-              >
-                <Monitor size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Desktop view</TooltipContent>
-          </Tooltip>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className={`h-8 w-8 rounded-none ${viewport === "mobile" ? "bg-slate-100" : ""}`}
-                onClick={() => setViewport("mobile")}
-                data-testid="viewport-mobile-btn"
-                aria-label="Mobile viewport"
-              >
-                <Smartphone size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Mobile view</TooltipContent>
-          </Tooltip>
+          {isMarkdown && activeFile.id !== "paste-preview" && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={"h-8 w-8 rounded-none " + (editMode ? "bg-[#0000FF]/10 text-[#0000FF]" : "")}
+                    onClick={handleToggleEdit}
+                    data-testid="toggle-edit-btn"
+                    aria-label={editMode ? "Switch to view" : "Edit markdown"}
+                  >
+                    {editMode ? <Eye size={16} /> : <Pencil size={16} />}
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>{editMode ? "View mode" : "Edit mode"}</TooltipContent>
+              </Tooltip>
+              {editMode && (
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 rounded-none text-green-600"
+                      onClick={function () { handleSaveMarkdown(editContent); }}
+                      data-testid="save-markdown-btn"
+                      aria-label="Save changes"
+                    >
+                      <Save size={16} />
+                    </Button>
+                  </TooltipTrigger>
+                  <TooltipContent>Save (Ctrl+S)</TooltipContent>
+                </Tooltip>
+              )}
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+            </>
+          )}
 
-          <div className="w-px h-5 bg-slate-200 mx-1" />
+          {isHtml && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={"h-8 w-8 rounded-none " + (viewport === "desktop" ? "bg-slate-100" : "")}
+                    onClick={function () { setViewport("desktop"); }}
+                    data-testid="viewport-desktop-btn"
+                    aria-label="Desktop viewport"
+                  >
+                    <Monitor size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Desktop view</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={"h-8 w-8 rounded-none " + (viewport === "mobile" ? "bg-slate-100" : "")}
+                    onClick={function () { setViewport("mobile"); }}
+                    data-testid="viewport-mobile-btn"
+                    aria-label="Mobile viewport"
+                  >
+                    <Smartphone size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Mobile view</TooltipContent>
+              </Tooltip>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+            </>
+          )}
 
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <Button
-                variant="ghost"
-                size="icon"
-                className="h-8 w-8 rounded-none"
-                onClick={handleRefresh}
-                data-testid="refresh-btn"
-                aria-label="Refresh render"
-              >
-                <RefreshCw size={16} />
-              </Button>
-            </TooltipTrigger>
-            <TooltipContent>Refresh</TooltipContent>
-          </Tooltip>
+          {isHtml && (
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 rounded-none"
+                  onClick={handleRefresh}
+                  data-testid="refresh-btn"
+                  aria-label="Refresh render"
+                >
+                  <RefreshCw size={16} />
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Refresh</TooltipContent>
+            </Tooltip>
+          )}
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
@@ -138,12 +229,13 @@ export function Renderer() {
             </TooltipTrigger>
             <TooltipContent>Fullscreen</TooltipContent>
           </Tooltip>
+
           <Tooltip>
             <TooltipTrigger asChild>
               <Button
                 variant="ghost"
                 size="icon"
-                className={`h-8 w-8 rounded-none ${isBookmarked ? "text-[#0000FF]" : ""}`}
+                className={"h-8 w-8 rounded-none " + (isBookmarked ? "text-[#0000FF]" : "")}
                 onClick={handleBookmark}
                 disabled={isBookmarked || activeFile.id === "paste-preview"}
                 data-testid="bookmark-btn"
@@ -158,17 +250,34 @@ export function Renderer() {
           </Tooltip>
         </div>
       </div>
+
       <div
-        className={`render-frame ${viewport === "mobile" ? "mobile-viewport" : ""}`}
+        className={"render-frame" + (isHtml && viewport === "mobile" ? " mobile-viewport" : "")}
         data-testid="render-frame"
       >
-        <iframe
-          ref={iframeRef}
-          srcDoc={activeContent}
-          title="HTML Render"
-          sandbox="allow-scripts allow-popups allow-forms"
-          data-testid="render-iframe"
-        />
+        {isHtml && (
+          <iframe
+            ref={iframeRef}
+            srcDoc={activeContent}
+            title="HTML Render"
+            sandbox="allow-scripts allow-popups allow-forms"
+            data-testid="render-iframe"
+          />
+        )}
+        {isMarkdown && !editMode && (
+          <div className="overflow-auto h-full bg-white">
+            <MarkdownViewer content={activeContent} />
+          </div>
+        )}
+        {isMarkdown && editMode && (
+          <MarkdownEditor
+            content={editContent}
+            onSave={handleSaveMarkdown}
+          />
+        )}
+        {isPdf && (
+          <PdfRenderer content={activeContent} />
+        )}
       </div>
     </div>
   );

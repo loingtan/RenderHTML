@@ -353,3 +353,56 @@
     height: 60vh;
   }
 }
+
+/* Markdown body styles */
+.markdown-body {
+  font-family: 'IBM Plex Sans', sans-serif;
+  font-size: 15px;
+  line-height: 1.7;
+  color: #111111;
+}
+.markdown-body h1 { font-size: 2em; font-weight: 800; margin: 1.5em 0 0.5em; border-bottom: 1px solid #E2E8F0; padding-bottom: 0.3em; letter-spacing: -0.02em; }
+.markdown-body h2 { font-size: 1.5em; font-weight: 700; margin: 1.3em 0 0.4em; letter-spacing: -0.01em; }
+.markdown-body h3 { font-size: 1.25em; font-weight: 600; margin: 1.2em 0 0.3em; }
+.markdown-body h4 { font-size: 1em; font-weight: 600; margin: 1em 0 0.3em; text-transform: uppercase; letter-spacing: 0.05em; color: #555; }
+.markdown-body p { margin: 0.8em 0; }
+.markdown-body a { color: #0000FF; text-decoration: underline; }
+.markdown-body a:hover { color: #0000CC; }
+.markdown-body code {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 0.85em;
+  background: #F3F4F6;
+  padding: 0.15em 0.4em;
+  border: 1px solid #E2E8F0;
+}
+.markdown-body pre {
+  background: #1E1E2E;
+  color: #CDD6F4;
+  padding: 16px;
+  overflow-x: auto;
+  margin: 1em 0;
+  border: 1px solid #313244;
+}
+.markdown-body pre code {
+  background: none;
+  border: none;
+  padding: 0;
+  color: inherit;
+  font-size: 13px;
+  line-height: 1.6;
+}
+.markdown-body blockquote {
+  border-left: 3px solid #0000FF;
+  padding: 0.5em 1em;
+  margin: 1em 0;
+  background: #F8F9FA;
+  color: #555;
+}
+.markdown-body ul, .markdown-body ol { padding-left: 1.5em; margin: 0.5em 0; }
+.markdown-body li { margin: 0.3em 0; }
+.markdown-body table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+.markdown-body th, .markdown-body td { border: 1px solid #E2E8F0; padding: 8px 12px; text-align: left; }
+.markdown-body th { background: #F3F4F6; font-weight: 600; font-size: 0.9em; text-transform: uppercase; letter-spacing: 0.03em; }
+.markdown-body hr { border: none; border-top: 1px solid #E2E8F0; margin: 2em 0; }
+.markdown-body img { max-width: 100%; height: auto; margin: 1em 0; }
+.markdown-body input[type="checkbox"] { margin-right: 0.5em; }

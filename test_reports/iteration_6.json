@@ -1,0 +1,40 @@
+{
+  "summary": "Iteration 6: Markdown (with Mermaid) + PDF + Note-editing for markdown files. Backend 34/34 pytest pass (added 6 new tests in TestMarkdownPdf: md upload->file_type=markdown, pdf upload->file_type=pdf base64 roundtrip, GET /content returns file_type field, PATCH /content updates markdown size & persists, PATCH non-markdown -> 400, PATCH non-existent -> 404). Frontend Playwright validated: dropzone accepts .md/.pdf, markdown renders headings/bold/lists/tables/blockquotes, mermaid code block renders as inline SVG, edit toggle (pencil) appears only on .md, split view editor+preview shows, PDF renders via <object> with fallback download link, HTML regression (iframe) intact, edit btn NOT shown for HTML/PDF, file icon coloring (blue md / red pdf / code html). BUG FOUND: toolbar Save button persists stale content because textarea is uncontrolled (defaultValue) and editContent state never updates on typing - only Ctrl+S works correctly (reads ref.current.value directly).",
+  "backend_issues": {"critical": [], "minor": []},
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Renderer.jsx + MarkdownRenderer.jsx",
+        "issue": "Toolbar Save button (data-testid='save-markdown-btn') saves STALE content. The MarkdownEditor textarea is uncontrolled (uses defaultValue={content}), so user keystrokes never update Renderer.jsx's `editContent` state. Clicking Save in toolbar runs `handleSaveMarkdown(editContent)` which sends the ORIGINAL content (what was loaded on edit-mode toggle), losing all user edits. Ctrl+S works because MarkdownEditor.handleSave reads `ref.current.value` directly. Verified end-to-end against backend GET /content - after toolbar Save click the persisted content equals original, not typed value.",
+        "selector": "[data-testid='save-markdown-btn']",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix toolbar Save button: either (a) lift textarea to controlled (value + onChange) so editContent stays in sync, OR (b) expose a ref/imperative API from MarkdownEditor so the toolbar button can read the current textarea value (mirror what Ctrl+S already does), OR (c) move the Save button inside MarkdownEditor where it can read ref.current.value directly. Recommended: pass a `onContentChange` prop from MarkdownEditor that updates editContent on textarea onChange (still keep defaultValue ok, or switch to controlled)."
+  ],
+  "critical_code_review_comments": [
+    "MarkdownEditor uses uncontrolled textarea with defaultValue. The component must either (i) report changes upward via an onChange callback so parent can save current value, or (ii) own its own Save UI. Current design splits ownership in a way that makes the toolbar Save button non-functional for actual user edits - a critical correctness bug for the new note-editing feature.",
+    "Renderer.handleSaveMarkdown is called from two places with different semantics (parent button uses stale editContent, child's onSave passes fresh ref value). This inconsistency directly causes the bug.",
+    "MarkdownEditor preview renders MarkdownViewer with `content` prop, but since content is the initial editContent (stale), the live preview won't reflect user edits either until next mount - confirmed by inspection. Should consider controlled state or local mirror state in MarkdownEditor for live preview.",
+    "Mermaid library is initialized at module top-level (mermaid.initialize). Acceptable but consider lazy init.",
+    "PdfRenderer creates blob URL but never URL.revokeObjectURL on unmount - minor memory leak on file switch.",
+    "server.py mixes top-level `import base64` (line 16) with local `import base64 as b64` (line 145) - inconsistent style only; not a bug.",
+    "ContentUpdateInput has no max-length guard - very large markdown payloads could OOM Mongo doc (16MB cap). Acceptable for MVP.",
+    "GET /files/{id}/content does not gzip; markdown/HTML can be large. Optional optimization."
+  ],
+  "updated_files": ["/app/backend/tests/backend_test.py"],
+  "success_rate": {"backend": "100% (34/34)", "frontend": "~92% - 1 high-priority bug (toolbar Save button)"},
+  "seed_data_creation": "Seeded test.md (with mermaid), test.pdf (valid minimal PDF), test.html via API. Cleaned up via DELETE /api/files at end.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend: PATCH /api/files/{id}/content works correctly (verified via direct API + via Ctrl+S in UI). The bug is FRONTEND-only in Renderer.jsx/MarkdownRenderer.jsx around the toolbar Save button. To reproduce: open .md file -> click pencil -> in textarea fill new content -> click Save icon in toolbar (NOT Ctrl+S) -> GET /api/files/{id}/content shows original content, not edited. Ctrl+S inside textarea works correctly. data-testids: toggle-edit-btn, save-markdown-btn, markdown-editor, markdown-editor-textarea, markdown-viewer, mermaid-diagram, pdf-viewer, pdf-download-link, render-iframe, toolbar-filename.",
+  "rca of the issue": "Root cause: MarkdownEditor textarea uses `defaultValue={content}` (uncontrolled component). User typing updates only the DOM ref, never the parent's `editContent` React state. The toolbar Save button onClick handler is `() => handleSaveMarkdown(editContent)` which sends the stale state value. Ctrl+S works because the keydown handler inside MarkdownEditor calls `onSave(ref.current.value)` reading the live DOM value. Fix: Either (1) make textarea controlled - value + onChange that calls a callback prop to update parent's editContent, OR (2) expose imperative ref handle from MarkdownEditor so toolbar can call .getValue(), OR (3) move Save button into MarkdownEditor."
+}
