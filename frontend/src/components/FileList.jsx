@@ -118,13 +118,13 @@ export function FileList({ searchQuery, sortBy }) {
 
   var rows = useMemo(function () {
     // When searching or sorting non-default, show flat list for clarity
-    if (query) {
+    if (query || currentSort !== "newest") {
       return filteredFiles.map(function (file) {
         return { type: "file", file: file, depth: 0, parentPath: "" };
       });
     }
     return buildRows(filteredFiles);
-  }, [filteredFiles, query]);
+  }, [filteredFiles, query, currentSort]);
 
   if (files.length === 0) {
     return <div className="no-items-message" data-testid="no-files-message">No files uploaded yet</div>;
@@ -215,7 +215,7 @@ export function FileList({ searchQuery, sortBy }) {
               <div className="file-item-name">{file.name}</div>
               <div className="file-item-meta">
                 {file.file_type.toUpperCase()} &middot; {formatSize(file.size)}
-                {query && file.relative_path ? " \u00B7 " + file.relative_path : ""}
+                {(query || currentSort !== "newest") && file.relative_path ? " \u00B7 " + file.relative_path : ""}
               </div>
             </div>
             <div className="file-item-actions">

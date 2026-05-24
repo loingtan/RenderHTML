@@ -43,11 +43,10 @@ Build an app that can render HTML inside and view it - an actual HTML/MHTML view
 - Scrollable sidebar with proper overflow handling
 
 ## Test Results
-- Backend: 100% (18/18 tests passed)
+- Backend: 100% (23/23 tests passed across 4 iterations)
 - Frontend: 100% (all flows validated)
 
 ## Prioritized Backlog
-- P1: Confirmation dialog before delete
-- P2: Search/filter files
 - P2: File rename capability
 - P3: Export bookmarks list
+- P3: Shareable public links for rendered pages
