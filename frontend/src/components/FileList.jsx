@@ -62,7 +62,7 @@ function buildRows(files) {
   return rows;
 }
 
-export function FileList() {
+export function FileList({ searchQuery }) {
   var app = useApp();
   var files = app.files;
   var activeFile = app.activeFile;
@@ -70,10 +70,34 @@ export function FileList() {
   var deleteFile = app.deleteFile;
   var [collapsedFolders, setCollapsedFolders] = useState({});
 
-  var rows = useMemo(function () { return buildRows(files); }, [files]);
+  var query = (searchQuery || "").trim().toLowerCase();
+
+  // Filter files when search is active
+  var filteredFiles = useMemo(function () {
+    if (!query) return files;
+    return files.filter(function (f) {
+      var name = (f.name || "").toLowerCase();
+      var path = (f.relative_path || "").toLowerCase();
+      return name.includes(query) || path.includes(query);
+    });
+  }, [files, query]);
+
+  var rows = useMemo(function () {
+    // When searching, show flat list (no folder tree) for quick scanning
+    if (query) {
+      return filteredFiles.map(function (file) {
+        return { type: "file", file: file, depth: 0, parentPath: "" };
+      });
+    }
+    return buildRows(filteredFiles);
+  }, [filteredFiles, query]);
 
   if (files.length === 0) {
     return <div className="no-items-message" data-testid="no-files-message">No files uploaded yet</div>;
+  }
+
+  if (query && filteredFiles.length === 0) {
+    return <div className="no-items-message" data-testid="no-search-results">No files match "{searchQuery}"</div>;
   }
 
   function toggleFolder(path) {
@@ -157,6 +181,7 @@ export function FileList() {
               <div className="file-item-name">{file.name}</div>
               <div className="file-item-meta">
                 {file.file_type.toUpperCase()} &middot; {formatSize(file.size)}
+                {query && file.relative_path ? " \u00B7 " + file.relative_path : ""}
               </div>
             </div>
             <div className="file-item-actions">
