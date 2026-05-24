@@ -32,10 +32,12 @@ A minimal, locally-hostable HTML and MHTML file viewer. Upload files, paste raw 
 git clone <your-repo-url>
 cd html-viewer
 
-# Start everything
+# Start everything (first run takes ~2-3 min to build)
 chmod +x start.sh
 ./start.sh
 ```
+
+> **Note**: The first build may take a few minutes as Docker downloads base images and installs dependencies. Subsequent starts are instant.
 
 This starts three containers:
 | Service  | URL                          |
