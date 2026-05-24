@@ -3,6 +3,13 @@ import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Button } from "@/components/ui/button";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -20,6 +27,7 @@ import { FileCode, Bookmark, ClipboardPaste, Search, X, Trash2 } from "lucide-re
 export function Sidebar() {
   const [activeTab, setActiveTab] = useState("files");
   const [searchQuery, setSearchQuery] = useState("");
+  const [sortBy, setSortBy] = useState("newest");
   const [showClearDialog, setShowClearDialog] = useState(false);
   const searchRef = useRef(null);
   const { files, clearAllFiles } = useApp();
@@ -118,7 +126,37 @@ export function Sidebar() {
                   </button>
                 )}
               </div>
-              {files.length > 0 && (
+              {files.length > 1 && (
+                <div className="flex gap-2 items-center">
+                  <Select value={sortBy} onValueChange={setSortBy}>
+                    <SelectTrigger
+                      className="h-7 rounded-none text-xs flex-1 border-slate-200"
+                      data-testid="sort-select-trigger"
+                    >
+                      <SelectValue placeholder="Sort by..." />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-none">
+                      <SelectItem value="newest" className="text-xs" data-testid="sort-newest">Newest first</SelectItem>
+                      <SelectItem value="oldest" className="text-xs" data-testid="sort-oldest">Oldest first</SelectItem>
+                      <SelectItem value="name-asc" className="text-xs" data-testid="sort-name-asc">Name A-Z</SelectItem>
+                      <SelectItem value="name-desc" className="text-xs" data-testid="sort-name-desc">Name Z-A</SelectItem>
+                      <SelectItem value="size-desc" className="text-xs" data-testid="sort-size-desc">Largest first</SelectItem>
+                      <SelectItem value="size-asc" className="text-xs" data-testid="sort-size-asc">Smallest first</SelectItem>
+                      <SelectItem value="type" className="text-xs" data-testid="sort-type">By type</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    variant="outline"
+                    className="rounded-none text-xs h-7 px-2 uppercase tracking-wider font-semibold text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300 flex-shrink-0"
+                    onClick={function () { setShowClearDialog(true); }}
+                    data-testid="clear-all-files-btn"
+                  >
+                    <Trash2 size={12} className="mr-1" />
+                    Clear
+                  </Button>
+                </div>
+              )}
+              {files.length === 1 && (
                 <Button
                   variant="outline"
                   className="w-full rounded-none text-xs h-7 uppercase tracking-wider font-semibold text-red-500 border-red-200 hover:bg-red-50 hover:text-red-600 hover:border-red-300"
@@ -131,7 +169,7 @@ export function Sidebar() {
               )}
             </div>
             <ScrollArea className="flex-1 min-h-0">
-              <FileList searchQuery={searchQuery} />
+              <FileList searchQuery={searchQuery} sortBy={sortBy} />
             </ScrollArea>
           </TabsContent>
 

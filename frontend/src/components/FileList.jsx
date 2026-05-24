@@ -62,7 +62,37 @@ function buildRows(files) {
   return rows;
 }
 
-export function FileList({ searchQuery }) {
+function sortFiles(files, sortBy) {
+  var sorted = files.slice();
+  switch (sortBy) {
+    case "newest":
+      sorted.sort(function (a, b) { return (b.created_at || "").localeCompare(a.created_at || ""); });
+      break;
+    case "oldest":
+      sorted.sort(function (a, b) { return (a.created_at || "").localeCompare(b.created_at || ""); });
+      break;
+    case "name-asc":
+      sorted.sort(function (a, b) { return (a.name || "").localeCompare(b.name || ""); });
+      break;
+    case "name-desc":
+      sorted.sort(function (a, b) { return (b.name || "").localeCompare(a.name || ""); });
+      break;
+    case "size-desc":
+      sorted.sort(function (a, b) { return (b.size || 0) - (a.size || 0); });
+      break;
+    case "size-asc":
+      sorted.sort(function (a, b) { return (a.size || 0) - (b.size || 0); });
+      break;
+    case "type":
+      sorted.sort(function (a, b) { return (a.file_type || "").localeCompare(b.file_type || ""); });
+      break;
+    default:
+      break;
+  }
+  return sorted;
+}
+
+export function FileList({ searchQuery, sortBy }) {
   var app = useApp();
   var files = app.files;
   var activeFile = app.activeFile;
@@ -71,19 +101,23 @@ export function FileList({ searchQuery }) {
   var [collapsedFolders, setCollapsedFolders] = useState({});
 
   var query = (searchQuery || "").trim().toLowerCase();
+  var currentSort = sortBy || "newest";
 
   // Filter files when search is active
   var filteredFiles = useMemo(function () {
-    if (!query) return files;
-    return files.filter(function (f) {
-      var name = (f.name || "").toLowerCase();
-      var path = (f.relative_path || "").toLowerCase();
-      return name.includes(query) || path.includes(query);
-    });
-  }, [files, query]);
+    var list = files;
+    if (query) {
+      list = list.filter(function (f) {
+        var name = (f.name || "").toLowerCase();
+        var path = (f.relative_path || "").toLowerCase();
+        return name.includes(query) || path.includes(query);
+      });
+    }
+    return sortFiles(list, currentSort);
+  }, [files, query, currentSort]);
 
   var rows = useMemo(function () {
-    // When searching, show flat list (no folder tree) for quick scanning
+    // When searching or sorting non-default, show flat list for clarity
     if (query) {
       return filteredFiles.map(function (file) {
         return { type: "file", file: file, depth: 0, parentPath: "" };

@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 4 verifies: sort dropdown, Cabinet Grotesk font fix, and Docker hosting files. Backend 23/23 pytest pass. Font fix verified: ZERO 'Failed to decode downloaded font'/OTS/sfntVersion warnings on page load (confirmed via console capture during Playwright run). Docker files all present, docker-compose.yml is valid YAML, start.sh is executable (rwxr-xr-x). README has full setup instructions for both Docker and non-Docker flows. CRITICAL BUG FOUND: Sort dropdown does NOT reorder files when files belong to a folder structure - sortFiles() output is overridden by buildRows() which always groups files by folder hierarchy with folder paths sorted alphabetically and standalone files appended last. Sort DOES work correctly for standalone-only files (verified: name-asc/desc, size-asc/desc, newest/oldest all reorder properly). Other flows verified: search filters with sort active, Escape clears search, Clear All dialog open/cancel/confirm works, file click renders in iframe.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "FileList.jsx",
+        "issue": "Sort dropdown selection has NO effect when files are inside folders. buildRows() reorders files by folder hierarchy (Object.keys(folderPaths).sort() puts folders alphabetically; standalone files always appended last; within-folder file order is from foldered.forEach insertion). The sortFiles() result is fed into buildRows() which then discards the intended ordering. Reproduction: upload 3 files where alpha.html is in testsite/, beta.html is in testsite/sub/, gamma.mhtml is standalone. Changing sort to 'Largest first' (gamma=69B is largest) or 'Newest' (gamma uploaded last) STILL produces order [alpha, beta, gamma] regardless of sort selection.",
+        "selector": "[data-testid=\"sort-select-trigger\"]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Fix FileList.jsx sort behavior with folder-grouped files. Options: (a) When sortBy != 'newest' (or any non-default), bypass buildRows() and render as flat list - similar to how search query already does; (b) Apply sortBy to standalone files AND to the sortedFolders ordering AND to files within each folder; (c) Always render flat when user picks an explicit sort. Simplest fix: in FileList.jsx around line 119-127, also short-circuit to flat-list when currentSort !== 'newest' (treat 'newest' as the default folder-tree view).",
+    "Consider adding a visual indicator/note that 'Sort' switches to a flat view when folders exist, or always render flat when sort != default."
+  ],
+  "critical_code_review_comments": [
+    "FileList.jsx buildRows() ignores file order from caller. It internally sorts folder paths alphabetically (Object.keys(folderPaths).sort()) and assigns files via push order during foldered.forEach. The sortFiles() output is therefore overridden. Either remove buildRows() reorg when sort is active, or apply sortBy inside buildRows.",
+    "Sidebar.jsx: sort state is kept in component-local useState - if user navigates away (e.g., to bookmarks tab) and back, state survives but is not persisted across refreshes. Acceptable for MVP.",
+    "docker-compose.yml uses 'version: 3.8' which is now obsolete in Compose v2 (warning, not error). Can be removed safely in future.",
+    "Frontend Dockerfile bakes REACT_APP_BACKEND_URL=http://localhost:8001 at build time via ARG/ENV - if user wants to deploy elsewhere, they must rebuild. Documented in README, acceptable.",
+    "index.css fix: @font-face was incorrectly pointing at a stylesheet URL; now uses @import url(...) for the stylesheet. Verified no OTS parse errors in console. GOOD."
+  ],
+  "updated_files": [],
+  "success_rate": {
+    "backend": "100% (23/23)",
+    "frontend": "85% - core flows work, sort dropdown broken for folder-grouped files"
+  },
+  "seed_data_creation": "Seeded then cleaned: 1) alpha.html in testsite/, beta.html in testsite/sub/, gamma.mhtml standalone (used for sort-with-folders test). 2) alpha.html, mid.html, zeta.html as standalone (used to confirm sort works for flat list). DB is empty at end of run via bulk DELETE /api/files.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Sort dropdown only renders when files.length > 1; Clear button alone shows when length===1. data-testid='sort-select-trigger' opens dropdown; options: sort-newest, sort-oldest, sort-name-asc, sort-name-desc, sort-size-desc, sort-size-asc, sort-type. To reproduce the sort bug, seed at least one foldered file via /api/files/upload with paths form data, plus one standalone. Sort works fine for flat lists. Font OTS errors: previously reported in iteration 3, now resolved by switching @font-face to @import url() at /app/frontend/src/index.css line 2.",
+  "rca of the issue": "ROOT CAUSE: In /app/frontend/src/components/FileList.jsx, the render pipeline is: files -> sortFiles(list, currentSort) -> filteredFiles -> buildRows(filteredFiles). buildRows() at lines 17-63 groups files into folder rows where (1) folder paths are sorted via Object.keys(folderPaths).sort() (always alphabetical), (2) files within a folder are pushed in foldered.forEach iteration order (which equals filteredFiles order, so sort IS honored within a folder), but (3) standalone files are unconditionally appended AFTER all foldered files (lines 57-60). Therefore sort orderings that should place standalone files first (e.g., 'Newest first' when gamma.mhtml is newest and standalone, or 'Largest first' when gamma is largest) cannot do so. FIX: Either (a) skip buildRows when sortBy is set to anything other than default and render a flat sorted list (mirror the existing 'if (query)' branch at line 121), or (b) apply sortBy to sortedFolders ordering AND interleave standalone files according to sort, not append them last."
+}
