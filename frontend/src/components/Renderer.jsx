@@ -4,6 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
 import { MarkdownViewer, MarkdownEditor } from "@/components/MarkdownRenderer";
 import { PdfRenderer } from "@/components/PdfRenderer";
+import { TabBar } from "@/components/TabBar";
 import {
   Bookmark,
   BookmarkCheck,
@@ -106,6 +107,7 @@ export function Renderer() {
   if (!activeFile) {
     return (
       <div className="main-workspace" data-testid="main-workspace">
+        <TabBar />
         <div className="empty-state" data-testid="empty-state">
           <div
             className="empty-state-bg"
@@ -127,6 +129,7 @@ export function Renderer() {
 
   return (
     <div className="main-workspace" data-testid="main-workspace">
+      <TabBar />
       <div className="toolbar" data-testid="toolbar">
         <div className="toolbar-left">
           {isPdf ? <FileText size={16} style={{ color: "#FF3333", flexShrink: 0 }} /> :

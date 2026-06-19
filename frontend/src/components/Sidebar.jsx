@@ -22,7 +22,8 @@ import { FileList } from "@/components/FileList";
 import { BookmarkList } from "@/components/BookmarkList";
 import { PasteEditor } from "@/components/PasteEditor";
 import { useApp } from "@/context/AppContext";
-import { FileCode, Bookmark, ClipboardPaste, Search, X, Trash2 } from "lucide-react";
+import { useTheme } from "@/context/ThemeContext";
+import { FileCode, Bookmark, ClipboardPaste, Search, X, Trash2, Sun, Moon } from "lucide-react";
 
 export function Sidebar() {
   const [activeTab, setActiveTab] = useState("files");
@@ -31,6 +32,7 @@ export function Sidebar() {
   const [showClearDialog, setShowClearDialog] = useState(false);
   const searchRef = useRef(null);
   const { files, clearAllFiles } = useApp();
+  const { dark, toggle: toggleTheme } = useTheme();
 
   // Global keyboard shortcut: Ctrl+F / Cmd+F to focus search
   useEffect(function () {
@@ -70,6 +72,14 @@ export function Sidebar() {
       <div className="sidebar-header">
         <FileCode size={20} strokeWidth={2.5} style={{ color: "#0000FF" }} />
         <h1>HTML Viewer</h1>
+        <button
+          onClick={toggleTheme}
+          className="ml-auto h-8 w-8 flex items-center justify-center rounded-none text-slate-500 hover:text-[#0000FF] dark:text-slate-400 dark:hover:text-blue-400 transition-colors"
+          data-testid="theme-toggle-btn"
+          aria-label={dark ? "Switch to light mode" : "Switch to dark mode"}
+        >
+          {dark ? <Sun size={16} /> : <Moon size={16} />}
+        </button>
       </div>
       <div className="sidebar-content">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="flex flex-col h-full min-h-0">

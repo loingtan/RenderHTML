@@ -99,16 +99,33 @@ export function FileList({ searchQuery, sortBy }) {
   var loadFileContent = app.loadFileContent;
   var deleteFile = app.deleteFile;
   var renameFile = app.renameFile;
+  var fileOrder = app.fileOrder;
+  var setFileOrder = app.setFileOrder;
   var [collapsedFolders, setCollapsedFolders] = useState({});
   var [editingId, setEditingId] = useState(null);
   var [editName, setEditName] = useState("");
+  var [dragId, setDragId] = useState(null);
+  var [dragOverId, setDragOverId] = useState(null);
 
   var query = (searchQuery || "").trim().toLowerCase();
   var currentSort = sortBy || "newest";
 
+  // Apply custom file order if set (drag & drop)
+  var orderedFiles = useMemo(function () {
+    if (fileOrder.length === 0 || query || currentSort !== "newest") return files;
+    var orderMap = {};
+    fileOrder.forEach(function (id, idx) { orderMap[id] = idx; });
+    var sorted = files.slice().sort(function (a, b) {
+      var ia = orderMap[a.id] !== undefined ? orderMap[a.id] : 9999;
+      var ib = orderMap[b.id] !== undefined ? orderMap[b.id] : 9999;
+      return ia - ib;
+    });
+    return sorted;
+  }, [files, fileOrder, query, currentSort]);
+
   // Filter files when search is active
   var filteredFiles = useMemo(function () {
-    var list = files;
+    var list = orderedFiles;
     if (query) {
       list = list.filter(function (f) {
         var name = (f.name || "").toLowerCase();
@@ -116,8 +133,11 @@ export function FileList({ searchQuery, sortBy }) {
         return name.includes(query) || path.includes(query);
       });
     }
-    return sortFiles(list, currentSort);
-  }, [files, query, currentSort]);
+    if (currentSort !== "newest" || query) {
+      return sortFiles(list, currentSort);
+    }
+    return list;
+  }, [orderedFiles, query, currentSort]);
 
   var rows = useMemo(function () {
     // When searching or sorting non-default, show flat list for clarity
@@ -204,11 +224,34 @@ export function FileList({ searchQuery, sortBy }) {
         // File row
         var file = row.file;
         var isEditing = editingId === file.id;
+        var isDragging = dragId === file.id;
+        var isDragOver = dragOverId === file.id;
         return (
           <div
             key={file.id}
-            className={"file-item" + (activeFile && activeFile.id === file.id ? " active" : "")}
+            className={"file-item" + (activeFile && activeFile.id === file.id ? " active" : "") + (isDragging ? " dragging-item" : "") + (isDragOver ? " drag-over-item" : "")}
             style={{ paddingLeft: 12 + row.depth * 16 + "px" }}
+            draggable={!isEditing && !query && currentSort === "newest"}
+            onDragStart={function (e) { setDragId(file.id); e.dataTransfer.effectAllowed = "move"; }}
+            onDragEnd={function () { setDragId(null); setDragOverId(null); }}
+            onDragOver={function (e) { e.preventDefault(); setDragOverId(file.id); }}
+            onDragLeave={function () { setDragOverId(null); }}
+            onDrop={function (e) {
+              e.preventDefault();
+              setDragOverId(null);
+              if (dragId && dragId !== file.id) {
+                var ids = filteredFiles.map(function (f) { return f.id; });
+                var fromIdx = ids.indexOf(dragId);
+                var toIdx = ids.indexOf(file.id);
+                if (fromIdx !== -1 && toIdx !== -1) {
+                  var newOrder = ids.slice();
+                  newOrder.splice(fromIdx, 1);
+                  newOrder.splice(toIdx, 0, dragId);
+                  setFileOrder(newOrder);
+                }
+              }
+              setDragId(null);
+            }}
             onClick={function () { if (!isEditing) loadFileContent(file.id, file.name); }}
             data-testid={"file-item-" + file.id}
           >

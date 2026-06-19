@@ -55,6 +55,28 @@ h1, h2, h3, h4, h5, h6 {
     --chart-5: 27 87% 67%;
     --radius: 0rem;
   }
+  .dark {
+    --background: 220 16% 10%;
+    --foreground: 210 20% 92%;
+    --card: 220 16% 13%;
+    --card-foreground: 210 20% 92%;
+    --popover: 220 16% 13%;
+    --popover-foreground: 210 20% 92%;
+    --primary: 240 100% 60%;
+    --primary-foreground: 0 0% 100%;
+    --secondary: 220 14% 18%;
+    --secondary-foreground: 210 20% 92%;
+    --muted: 220 14% 18%;
+    --muted-foreground: 215 16% 55%;
+    --accent: 220 14% 18%;
+    --accent-foreground: 210 20% 92%;
+    --destructive: 0 65% 50%;
+    --destructive-foreground: 0 0% 98%;
+    --border: 220 14% 20%;
+    --input: 220 14% 20%;
+    --ring: 240 100% 60%;
+    --radius: 0rem;
+  }
 }
 
 @layer base {

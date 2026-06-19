@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import "@/App.css";
 import { AppProvider, useApp } from "@/context/AppContext";
+import { ThemeProvider } from "@/context/ThemeContext";
 import { Sidebar } from "@/components/Sidebar";
 import { Renderer } from "@/components/Renderer";
 import { Toaster } from "@/components/ui/sonner";
@@ -24,12 +25,14 @@ function AppContent() {
 
 function App() {
   return (
-    <TooltipProvider delayDuration={200}>
-      <AppProvider>
-        <AppContent />
-        <Toaster position="bottom-right" />
-      </AppProvider>
-    </TooltipProvider>
+    <ThemeProvider>
+      <TooltipProvider delayDuration={200}>
+        <AppProvider>
+          <AppContent />
+          <Toaster position="bottom-right" />
+        </AppProvider>
+      </TooltipProvider>
+    </ThemeProvider>
   );
 }
 

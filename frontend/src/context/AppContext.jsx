@@ -9,9 +9,18 @@ const AppContext = createContext(null);
 export function AppProvider({ children }) {
   const [files, setFiles] = useState([]);
   const [bookmarks, setBookmarks] = useState([]);
-  const [activeFile, setActiveFile] = useState(null);
   const [activeContent, setActiveContent] = useState("");
   const [loading, setLoading] = useState(false);
+
+  // Tabs state: array of { id, name, file_type }
+  const [openTabs, setOpenTabs] = useState([]);
+  const [activeTabId, setActiveTabId] = useState(null);
+
+  // Derived: active file from tabs
+  const activeFile = openTabs.find(function (t) { return t.id === activeTabId; }) || null;
+
+  // File order for drag & drop (array of file IDs)
+  const [fileOrder, setFileOrder] = useState([]);
 
   const fetchFiles = useCallback(async () => {
     try {
@@ -44,9 +53,8 @@ export function AppProvider({ children }) {
       const res = await axios.post(`${API}/files/upload`, formData);
       toast.success(`${res.data.length} file(s) uploaded`);
       await fetchFiles();
-      // Auto-select first uploaded file
       if (res.data.length > 0) {
-        loadFileContent(res.data[0].id, res.data[0].name);
+        openFileInTab(res.data[0].id, res.data[0].name, res.data[0].file_type);
       }
     } catch (e) {
       toast.error("Upload failed");
@@ -62,7 +70,7 @@ export function AppProvider({ children }) {
       const res = await axios.post(`${API}/files/paste`, { name, content });
       toast.success("HTML saved");
       await fetchFiles();
-      loadFileContent(res.data.id, res.data.name);
+      openFileInTab(res.data.id, res.data.name, res.data.file_type || "html");
     } catch (e) {
       toast.error("Failed to save");
       console.error(e);
@@ -71,31 +79,78 @@ export function AppProvider({ children }) {
     }
   }, [fetchFiles]);
 
-  const loadFileContent = useCallback(async (fileId, fileName) => {
+  // Tab management
+  const openFileInTab = useCallback(async (fileId, fileName, fileType) => {
+    // Check if tab already open
+    setOpenTabs(function (prev) {
+      var existing = prev.find(function (t) { return t.id === fileId; });
+      if (existing) return prev;
+      return prev.concat([{ id: fileId, name: fileName, file_type: fileType || "html" }]);
+    });
+    setActiveTabId(fileId);
+    // Load content
     try {
       const res = await axios.get(`${API}/files/${fileId}/content`);
-      setActiveFile({ id: fileId, name: fileName || res.data.name, file_type: res.data.file_type });
+      setActiveContent(res.data.content);
+      // Update tab name/type in case it changed
+      setOpenTabs(function (prev) {
+        return prev.map(function (t) {
+          return t.id === fileId ? { ...t, name: res.data.name, file_type: res.data.file_type || t.file_type } : t;
+        });
+      });
+    } catch (e) {
+      toast.error("Failed to load file");
+    }
+  }, []);
+
+  const switchTab = useCallback(async (tabId) => {
+    setActiveTabId(tabId);
+    try {
+      const res = await axios.get(`${API}/files/${tabId}/content`);
       setActiveContent(res.data.content);
     } catch (e) {
       toast.error("Failed to load file");
-      console.error(e);
     }
   }, []);
+
+  const closeTab = useCallback(function (tabId) {
+    setOpenTabs(function (prev) {
+      var filtered = prev.filter(function (t) { return t.id !== tabId; });
+      // If closing active tab, switch to neighbor
+      if (tabId === activeTabId) {
+        var idx = prev.findIndex(function (t) { return t.id === tabId; });
+        var next = filtered[Math.min(idx, filtered.length - 1)];
+        if (next) {
+          setActiveTabId(next.id);
+          axios.get(`${API}/files/${next.id}/content`).then(function (res) {
+            setActiveContent(res.data.content);
+          });
+        } else {
+          setActiveTabId(null);
+          setActiveContent("");
+        }
+      }
+      return filtered;
+    });
+  }, [activeTabId]);
+
+  // Backward compat: loadFileContent opens in tab
+  const loadFileContent = useCallback(async (fileId, fileName, fileType) => {
+    openFileInTab(fileId, fileName, fileType);
+  }, [openFileInTab]);
 
   const deleteFile = useCallback(async (fileId) => {
     try {
       await axios.delete(`${API}/files/${fileId}`);
       toast.success("File deleted");
-      if (activeFile?.id === fileId) {
-        setActiveFile(null);
-        setActiveContent("");
-      }
+      // Close tab if open
+      closeTab(fileId);
       await fetchFiles();
       await fetchBookmarks();
     } catch (e) {
       toast.error("Delete failed");
     }
-  }, [activeFile, fetchFiles, fetchBookmarks]);
+  }, [closeTab, fetchFiles, fetchBookmarks]);
 
   const addBookmark = useCallback(async (fileId, name) => {
     try {
@@ -121,7 +176,8 @@ export function AppProvider({ children }) {
     try {
       const res = await axios.delete(`${API}/files`);
       toast.success(`Cleared ${res.data.files_deleted} file(s)`);
-      setActiveFile(null);
+      setOpenTabs([]);
+      setActiveTabId(null);
       setActiveContent("");
       await fetchFiles();
       await fetchBookmarks();
@@ -134,15 +190,16 @@ export function AppProvider({ children }) {
     try {
       await axios.patch(`${API}/files/${fileId}/rename`, { name: newName });
       toast.success("Renamed");
-      if (activeFile?.id === fileId) {
-        setActiveFile(function (prev) { return prev ? { ...prev, name: newName } : prev; });
-      }
+      // Update tab name
+      setOpenTabs(function (prev) {
+        return prev.map(function (t) { return t.id === fileId ? { ...t, name: newName } : t; });
+      });
       await fetchFiles();
       await fetchBookmarks();
     } catch (e) {
       toast.error("Rename failed");
     }
-  }, [activeFile, fetchFiles, fetchBookmarks]);
+  }, [fetchFiles, fetchBookmarks]);
 
   const exportBookmarks = useCallback(async () => {
     try {
@@ -172,25 +229,14 @@ export function AppProvider({ children }) {
   }, [fetchFiles]);
 
   const value = {
-    files,
-    bookmarks,
-    activeFile,
-    activeContent,
-    loading,
-    setActiveContent,
-    setActiveFile,
-    fetchFiles,
-    fetchBookmarks,
-    uploadFiles,
-    pasteHtml,
-    loadFileContent,
-    deleteFile,
-    addBookmark,
-    removeBookmark,
-    clearAllFiles,
-    renameFile,
-    exportBookmarks,
-    updateFileContent,
+    files, bookmarks, activeFile, activeContent, loading,
+    openTabs, activeTabId,
+    fileOrder, setFileOrder,
+    setActiveContent, setActiveFile: function () {}, // deprecated, use tabs
+    fetchFiles, fetchBookmarks, uploadFiles, pasteHtml,
+    loadFileContent, openFileInTab, switchTab, closeTab,
+    deleteFile, addBookmark, removeBookmark, clearAllFiles,
+    renameFile, exportBookmarks, updateFileContent,
   };
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

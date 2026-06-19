@@ -4,15 +4,17 @@ import { Button } from "@/components/ui/button";
 import { Play } from "lucide-react";
 
 export function PasteEditor() {
-  const { pasteHtml, setActiveContent, setActiveFile, loading } = useApp();
+  const { pasteHtml, openFileInTab, setActiveContent, loading } = useApp();
   const [code, setCode] = useState("");
   const [name, setName] = useState("");
 
   const handleRender = () => {
     if (!code.trim()) return;
-    // Render directly without saving
-    setActiveFile({ id: "paste-preview", name: name || "Pasted HTML" });
-    setActiveContent(code);
+    // Open as a temporary preview tab
+    var previewTab = { id: "paste-preview", name: name || "Pasted HTML", file_type: "html" };
+    openFileInTab("paste-preview", previewTab.name, "html");
+    // Override content directly since paste-preview isn't in DB
+    setTimeout(function () { setActiveContent(code); }, 100);
   };
 
   const handleSaveAndRender = async () => {
@@ -27,7 +29,7 @@ export function PasteEditor() {
         placeholder="Name (optional)"
         value={name}
         onChange={(e) => setName(e.target.value)}
-        className="w-full border border-slate-200 bg-white px-3 py-2 text-sm outline-none focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10 font-medium"
+        className="w-full border border-slate-200 dark:border-slate-600 bg-white dark:bg-slate-800 px-3 py-2 text-sm outline-none focus:border-[#0000FF] focus:ring-2 focus:ring-[#0000FF]/10 font-medium dark:text-slate-200"
         data-testid="paste-name-input"
       />
       <textarea
