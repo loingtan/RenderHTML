@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { useApp } from "@/context/AppContext";
 import { Button } from "@/components/ui/button";
 import { Tooltip, TooltipTrigger, TooltipContent } from "@/components/ui/tooltip";
@@ -46,6 +46,18 @@ export function Renderer() {
   var zoomIn = useCallback(function () { setZoom(function (z) { return Math.min(z + 25, 300); }); }, []);
   var zoomOut = useCallback(function () { setZoom(function (z) { return Math.max(z - 25, 25); }); }, []);
   var zoomReset = useCallback(function () { setZoom(100); }, []);
+
+  // Ctrl+/- keyboard shortcuts for zoom
+  useEffect(function () {
+    function handleKeyDown(e) {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "=" || e.key === "+") { e.preventDefault(); zoomIn(); }
+      else if (e.key === "-") { e.preventDefault(); zoomOut(); }
+      else if (e.key === "0") { e.preventDefault(); zoomReset(); }
+    }
+    window.addEventListener("keydown", handleKeyDown);
+    return function () { window.removeEventListener("keydown", handleKeyDown); };
+  }, [zoomIn, zoomOut, zoomReset]);
 
   var isBookmarked = activeFile && bookmarks.some(function (b) { return b.file_id === activeFile.id; });
   var fileType = activeFile ? (activeFile.file_type || detectFileType(activeFile)) : "unknown";
