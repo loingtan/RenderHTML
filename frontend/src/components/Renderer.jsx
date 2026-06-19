@@ -16,6 +16,9 @@ import {
   Pencil,
   Eye,
   Save,
+  ZoomIn,
+  ZoomOut,
+  RotateCcw,
 } from "lucide-react";
 
 function detectFileType(file) {
@@ -37,7 +40,12 @@ export function Renderer() {
   var [viewport, setViewport] = useState("desktop");
   var [editMode, setEditMode] = useState(false);
   var [editContent, setEditContent] = useState("");
+  var [zoom, setZoom] = useState(100);
   var iframeRef = useRef(null);
+
+  var zoomIn = useCallback(function () { setZoom(function (z) { return Math.min(z + 25, 300); }); }, []);
+  var zoomOut = useCallback(function () { setZoom(function (z) { return Math.max(z - 25, 25); }); }, []);
+  var zoomReset = useCallback(function () { setZoom(100); }, []);
 
   var isBookmarked = activeFile && bookmarks.some(function (b) { return b.file_id === activeFile.id; });
   var fileType = activeFile ? (activeFile.file_type || detectFileType(activeFile)) : "unknown";
@@ -197,6 +205,53 @@ export function Renderer() {
           )}
 
           {isHtml && (
+            <>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-none"
+                    onClick={zoomOut}
+                    disabled={zoom <= 25}
+                    data-testid="zoom-out-btn"
+                    aria-label="Zoom out"
+                  >
+                    <ZoomOut size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Zoom out</TooltipContent>
+              </Tooltip>
+              <button
+                onClick={zoomReset}
+                className="h-8 px-1.5 text-[11px] font-mono font-semibold text-slate-600 hover:text-[#0000FF] transition-colors"
+                data-testid="zoom-level"
+                aria-label="Reset zoom"
+                title="Click to reset"
+              >
+                {zoom}%
+              </button>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-8 w-8 rounded-none"
+                    onClick={zoomIn}
+                    disabled={zoom >= 300}
+                    data-testid="zoom-in-btn"
+                    aria-label="Zoom in"
+                  >
+                    <ZoomIn size={16} />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Zoom in</TooltipContent>
+              </Tooltip>
+              <div className="w-px h-5 bg-slate-200 mx-1" />
+            </>
+          )}
+
+          {isHtml && (
             <Tooltip>
               <TooltipTrigger asChild>
                 <Button
@@ -261,6 +316,12 @@ export function Renderer() {
             srcDoc={activeContent}
             title="HTML Render"
             sandbox="allow-scripts allow-popups allow-forms"
+            style={{
+              transform: "scale(" + (zoom / 100) + ")",
+              transformOrigin: "0 0",
+              width: (10000 / zoom) + "%",
+              height: (10000 / zoom) + "%",
+            }}
             data-testid="render-iframe"
           />
         )}
