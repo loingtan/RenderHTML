@@ -97,6 +97,52 @@ Open http://localhost:3000
 
 ---
 
+## Deploy to Kubernetes
+
+### Prerequisites
+
+- Docker + Docker Hub account (`docker login`)
+- `kubectl` configured for your cluster
+
+### Step 1: Build & Push Images
+
+```bash
+chmod +x build-push.sh
+./build-push.sh
+```
+
+This builds and pushes to:
+- `maikusobu/html-viewer-backend:latest`
+- `maikusobu/html-viewer-frontend:latest`
+
+### Step 2: Deploy to K8s
+
+```bash
+chmod +x deploy-k8s.sh
+./deploy-k8s.sh
+```
+
+This creates:
+| Resource   | Type        | Details                          |
+|------------|-------------|----------------------------------|
+| Namespace  | `html-viewer` | Isolates all resources          |
+| MongoDB    | Deployment + PVC + ClusterIP | 5Gi persistent storage |
+| Backend    | Deployment (2 replicas) + ClusterIP | Port 8001 |
+| Frontend   | Deployment (2 replicas) + NodePort | Port 30080 |
+
+Access the app at `http://<NODE_IP>:30080`
+
+### K8s Commands
+
+```bash
+kubectl -n html-viewer get all          # Check status
+kubectl -n html-viewer logs -l app=backend -f  # Backend logs
+kubectl -n html-viewer scale deploy/backend --replicas=3  # Scale
+kubectl delete namespace html-viewer     # Delete everything
+```
+
+---
+
 ## Tech Stack
 
 | Layer    | Technology                         |
